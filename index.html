@@ -436,7 +436,7 @@ function saveLoc(){
   localStorage.setItem('bdl-v11',JSON.stringify({leads:leads,clients:clients}));
 }
 function loadLoc(){try{var d=JSON.parse(localStorage.getItem('bdl-v11')||localStorage.getItem('bdl-v10')||'null');return d||{leads:null,clients:[]};}catch(e){return{leads:null,clients:[]};}}
-function normLeads(arr){return arr.map(function(l){['followUpDate','lastContacted'].forEach(function(k){if(l[k])l[k]=fmtDate(l[k]);});if(!l.city)l.city='';if(!l.state)l.state='';if(!l.timezone)l.timezone='';if(!l.title)l.title='';if(!l.lastSender)l.lastSender='';if(!l.dealStage)l.dealStage='Contacted';if(l.dealValue===undefined)l.dealValue='';if(!l.contacts||!l.contacts.length){l.contacts=l.email?[{id:String(Date.now())+'_m',name:l.contact||'',email:l.email,title:'',priority:'Primary',status:'Active'}]:[];}return l;});}
+function normLeads(arr){return arr.map(function(l){['followUpDate','lastContacted'].forEach(function(k){if(l[k])l[k]=fmtDate(l[k]);});if(!l.city)l.city='';if(!l.state)l.state='';if(!l.timezone)l.timezone='';if(!l.title)l.title='';if(!l.lastSender)l.lastSender='';if(!l.dealStage)l.dealStage='Contacted';if(l.dealValue===undefined)l.dealValue='';if(!l.contacts||!l.contacts.length){l.contacts=l.email?[{id:String(Date.now())+'_m',name:l.contact||'',email:l.email,title:'',priority:'Primary',status:'Active'}]:[];}l.contacts=l.contacts.map(function(c){if(!c.status||c.status==='undefined')c.status='Active';if(!c.priority||c.priority==='undefined')c.priority='Primary';return c;});return l;});}
 function getPrimaryEmail(l){if(!l.contacts||!l.contacts.length)return l.email||'';var a=l.contacts.find(function(c){return c.status!=='Bounced';});return a?a.email:(l.contacts[0]?l.contacts[0].email:l.email||'');}
 
 // tz helpers
