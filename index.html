@@ -437,7 +437,7 @@ function lcChanged(val){
   var fu=ge('lp-fu');
   if(fu)fu.value=nbiz(val,4);
 }
-function nbiz(from,days){var dt=new Date(from),n=0;days=days||3;while(n<days){dt.setDate(dt.getDate()+1);if(dt.getDay()!==0&&dt.getDay()!==6)n++;}return dt.toISOString().split('T')[0];}
+function nbiz(from,days){var p=from.split('-');var dt=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));var n=0;days=days||4;while(n<days){dt.setDate(dt.getDate()+1);if(dt.getDay()!==0&&dt.getDay()!==6)n++;}var mm=dt.getMonth()+1,dd=dt.getDate();return dt.getFullYear()+'-'+(mm<10?'0':'')+mm+'-'+(dd<10?'0':'')+dd;}
 function flash(m,t){var e=ge('fmsg');e.textContent=m;e.className=t==='bad'?'bad':'ok';e.classList.remove('h');setTimeout(function(){e.classList.add('h');},2500);}
 function setSyn(s,t){var d=ge('sdot'),tx=ge('stxt');if(!d)return;d.className=s==='syn'?'s':s==='err'?'err':'';tx.textContent=t;}
 function saveLoc(){
@@ -1569,62 +1569,179 @@ function renderDash(){
   var total=leads.length;
   var warm=leads.filter(function(l){return l.status==='Warm Lead';});
   var replied=leads.filter(function(l){return l.status==='Replied';});
+  var bounced=leads.filter(function(l){return l.status==='Bounced';});
   var overdue=leads.filter(function(l){return l.followUpDate&&l.followUpDate<t&&['Bounced','Replied'].indexOf(l.status)<0;});
   var dueToday=leads.filter(function(l){return l.followUpDate===t&&['Bounced','Replied'].indexOf(l.status)<0;});
+  var contacted=leads.filter(function(l){return (l.outreachLog||[]).length>0;});
+  var responseRate=contacted.length?Math.round(replied.length/contacted.length*100):0;
+  var bounceRate=contacted.length?Math.round(bounced.length/contacted.length*100):0;
+
+  // Niche map
   var nicheMap={};
   leads.forEach(function(l){var n=l.niche||'Other';nicheMap[n]=(nicheMap[n]||0)+1;});
   var niches=Object.keys(nicheMap).sort(function(a,b){return nicheMap[b]-nicheMap[a];});
+
+  // Deal stage map
   var stageMap={};
   leads.forEach(function(l){var s=l.dealStage||'Contacted';stageMap[s]=(stageMap[s]||0)+1;});
-  var topLeads=leads.slice().sort(function(a,b){return(b.followUpCount||0)-(a.followUpCount||0);}).slice(0,5);
-  var html='<div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:14px">';
-  // Summary
-  html+='<div style="background:#050505;border:1px solid #111;border-radius:12px;padding:16px;grid-column:1/-1">'+
-    '<div style="font-size:11px;color:#333;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Pipeline Summary</div>'+
-    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;text-align:center">'+
-    [['Total',total,'#60a5fa'],['Warm',warm.length,'var(--orange3)'],['Overdue',overdue.length,'#ef4444'],['Due Today',dueToday.length,'#facc15'],['Replied',replied.length,'#4ade80']].map(function(x){
-      return'<div><div style="font-size:22px;font-weight:900;color:'+x[2]+'">'+x[1]+'</div><div style="font-size:10px;color:#333;margin-top:2px">'+x[0]+'</div></div>';
-    }).join('')+'</div></div>';
-  // Niche breakdown
-  html+='<div style="background:#050505;border:1px solid #111;border-radius:12px;padding:16px">'+
-    '<div style="font-size:11px;color:#333;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">By Niche</div>'+
-    niches.map(function(n){
-      var pct=Math.round(nicheMap[n]/total*100);
-      return'<div style="margin-bottom:8px">'+
-        '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">'+
-          '<span style="color:var(--text2)">'+esc(n)+'</span><span style="color:#333">'+nicheMap[n]+' ('+pct+'%)</span></div>'+
-        '<div style="background:#0a0a0a;border-radius:4px;height:4px">'+
-          '<div style="background:linear-gradient(90deg,var(--orange),var(--orange2));height:4px;border-radius:4px;width:'+pct+'%"></div></div></div>';
-    }).join('')+'</div>';
-  // Deal stage funnel
-  html+='<div style="background:#050505;border:1px solid #111;border-radius:12px;padding:16px">'+
-    '<div style="font-size:11px;color:#333;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Deal Stage Funnel</div>'+
-    ['Prospecting','Contacted','Sample Sent','Negotiating','Closed Won','Closed Lost'].map(function(s){
-      var cnt=stageMap[s]||0;var pct=total?Math.round(cnt/total*100):0;
-      var clr=s==='Closed Won'?'#4ade80':s==='Closed Lost'?'#ef4444':'var(--orange)';
-      return'<div style="margin-bottom:8px">'+
-        '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">'+
-          '<span style="color:var(--text2)">'+s+'</span><span style="color:#333">'+cnt+'</span></div>'+
-        '<div style="background:#0a0a0a;border-radius:4px;height:4px">'+
-          '<div style="background:'+clr+';height:4px;border-radius:4px;width:'+pct+'%"></div></div></div>';
-    }).join('')+'</div>';
-  // Top leads table
-  html+='<div style="background:#050505;border:1px solid #111;border-radius:12px;padding:16px;grid-column:1/-1">'+
-    '<div style="font-size:11px;color:#333;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Most Contacted Leads</div>'+
-    '<table style="width:100%;border-collapse:collapse">'+
-    '<tr style="border-bottom:1px solid #111">'+
-      ['Company','Contact','Status','Follow-ups','Next Follow-up'].map(function(h,i){
-        return'<th style="text-align:'+(i>2?'right':'left')+';font-size:10px;color:#333;padding:4px 8px;font-weight:600">'+h+'</th>';
-      }).join('')+'</tr>'+
-    topLeads.map(function(l){
-      return'<tr style="border-bottom:1px solid #060606;cursor:pointer" onclick="openLp(\''+l.id+'\')">'+
-        '<td style="padding:6px 8px;font-size:12px;color:var(--text2)">'+esc(l.company)+'</td>'+
-        '<td style="padding:6px 8px;font-size:11px;color:#475569">'+esc(l.contact||'—')+'</td>'+
-        '<td style="padding:6px 8px"><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,106,0,.1);color:var(--orange3)">'+esc(l.status)+'</span></td>'+
-        '<td style="padding:6px 8px;font-size:12px;color:var(--orange3);text-align:right;font-weight:700">'+(l.followUpCount||0)+'</td>'+
-        '<td style="padding:6px 8px;font-size:11px;text-align:right">'+(l.followUpDate&&l.followUpDate<t?'<span style="color:#ef4444">Overdue</span>':('<span style="color:#333">'+esc(l.followUpDate||'—')+'</span>'))+'</td>'+
-      '</tr>';
-    }).join('')+'</table></div>';
+
+  // Sender breakdown
+  var senderMap={};
+  leads.forEach(function(l){
+    if(l.lastSender){var s=l.lastSender.split('@')[0];senderMap[s]=(senderMap[s]||0)+1;}
+  });
+
+  // Activity by day (last 14 days)
+  var actMap={};
+  leads.forEach(function(l){
+    (l.outreachLog||[]).forEach(function(log){
+      if(log.date&&log.date>=t.substring(0,8)+'01')actMap[log.date]=(actMap[log.date]||0)+1;
+    });
+  });
+  var last14=[];
+  for(var i=13;i>=0;i--){
+    var p=t.split('-');var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])-i);
+    var mm=d.getMonth()+1,dd=d.getDate();
+    var ds=d.getFullYear()+'-'+(mm<10?'0':'')+mm+'-'+(dd<10?'0':'')+dd;
+    last14.push({date:ds,count:actMap[ds]||0,label:(mm)+'/'+dd});
+  }
+  var maxAct=Math.max.apply(null,last14.map(function(x){return x.count;}));
+
+  // Top leads by follow-up count
+  var topLeads=leads.slice().sort(function(a,b){return(b.outreachLog||[]).length-(a.outreachLog||[]).length;}).slice(0,5);
+
+  // Avg days between contacts
+  var avgDays=0,avgCount=0;
+  leads.forEach(function(l){
+    var logs=(l.outreachLog||[]).filter(function(x){return x.date;}).sort(function(a,b){return a.date.localeCompare(b.date);});
+    if(logs.length>=2){
+      for(var i=1;i<logs.length;i++){
+        var d1=new Date(logs[i-1].date),d2=new Date(logs[i].date);
+        avgDays+=Math.floor((d2-d1)/(1000*60*60*24));avgCount++;
+      }
+    }
+  });
+  var avgFollowDays=avgCount?Math.round(avgDays/avgCount):0;
+
+  // Pipeline value
+  var pipelineVal=0;
+  leads.forEach(function(l){if(l.dealValue&&parseFloat(l.dealValue))pipelineVal+=parseFloat(l.dealValue);});
+
+  var card='background:#0a0e1a;border:1px solid #1a2035;border-radius:12px;padding:16px;';
+  var label='font-size:10px;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;display:block;';
+  var html='<div style="padding:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px">';
+
+  // ── ROW 1: KPI cards ──
+  var kpis=[
+    {label:'Total Leads',val:total,color:'#60a5fa',sub:'in pipeline'},
+    {label:'Contacted',val:contacted.length,color:'#f97316',sub:Math.round(contacted.length/total*100)+'% of total'},
+    {label:'Warm Leads',val:warm.length,color:'#fb923c',sub:'actively interested'},
+    {label:'Replied',val:replied.length,color:'#4ade80',sub:responseRate+'% response rate'},
+    {label:'Bounced',val:bounced.length,color:'#ef4444',sub:bounceRate+'% bounce rate'},
+    {label:'Pipeline Value',val:'$'+pipelineVal.toLocaleString(),color:'#a78bfa',sub:'expected total'}
+  ];
+  kpis.forEach(function(k){
+    html+='<div style="'+card+'">'+
+      '<span style="'+label+'">'+k.label+'</span>'+
+      '<div style="font-size:28px;font-weight:900;color:'+k.color+';letter-spacing:-1px;line-height:1">'+k.val+'</div>'+
+      '<div style="font-size:10px;color:#334155;margin-top:4px">'+k.sub+'</div>'+
+    '</div>';
+  });
+
+  // ── ROW 2: Activity chart (full width) ──
+  html+='<div style="'+card+'grid-column:1/-1">'+
+    '<span style="'+label+'">📈 Outreach Activity — Last 14 Days</span>'+
+    '<div style="display:flex;align-items:flex-end;gap:4px;height:60px">';
+  last14.forEach(function(d){
+    var h=maxAct>0?Math.round((d.count/maxAct)*56):0;
+    var isToday=d.date===t;
+    html+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'+
+      '<div style="font-size:9px;color:'+(d.count>0?'#f97316':'#1e293b')+'">'+( d.count>0?d.count:'')+'</div>'+
+      '<div style="width:100%;height:'+(h||2)+'px;background:'+(isToday?'#f97316':d.count>0?'#334155':'#111827')+';border-radius:2px 2px 0 0;min-height:2px"></div>'+
+      '<div style="font-size:8px;color:#1e293b;white-space:nowrap">'+d.label+'</div>'+
+    '</div>';
+  });
+  html+='</div></div>';
+
+  // ── ROW 3: Niche breakdown + Sender breakdown ──
+  html+='<div style="'+card+'grid-column:span 2">'+
+    '<span style="'+label+'">🎯 By Niche</span>';
+  niches.forEach(function(n){
+    var pct=Math.round(nicheMap[n]/total*100);
+    var nc={'Education':'#60a5fa','Dental':'#34d399','Healthcare/Staffing':'#f472b6','SaaS':'#a78bfa','Finance/Lending':'#facc15','Real Estate/PropTech':'#fb923c','Motivational':'#e879f9'}[n]||'#475569';
+    html+='<div style="margin-bottom:9px">'+
+      '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">'+
+        '<span style="color:#94a3b8;font-weight:600">'+esc(n)+'</span>'+
+        '<span style="color:#475569">'+nicheMap[n]+' <span style="color:'+nc+'">'+pct+'%</span></span>'+
+      '</div>'+
+      '<div style="background:#111827;border-radius:4px;height:5px">'+
+        '<div style="background:'+nc+';height:5px;border-radius:4px;width:'+pct+'%;transition:width .5s ease"></div>'+
+      '</div></div>';
+  });
+  html+='</div>';
+
+  // Sender breakdown
+  html+='<div style="'+card+'">'+
+    '<span style="'+label+'">📧 By Sender</span>';
+  var senders=Object.keys(senderMap);
+  if(senders.length){
+    senders.sort(function(a,b){return senderMap[b]-senderMap[a];}).forEach(function(s,i){
+      var clr=i===0?'#f97316':'#60a5fa';
+      var pct=Math.round(senderMap[s]/contacted.length*100)||0;
+      html+='<div style="margin-bottom:12px">'+
+        '<div style="font-size:11px;color:#94a3b8;font-weight:600;margin-bottom:2px">'+esc(s)+'</div>'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<div style="flex:1;background:#111827;border-radius:4px;height:5px">'+
+            '<div style="background:'+clr+';height:5px;border-radius:4px;width:'+pct+'%"></div>'+
+          '</div>'+
+          '<span style="font-size:11px;color:'+clr+';font-weight:700;min-width:24px">'+senderMap[s]+'</span>'+
+        '</div></div>';
+    });
+  } else {
+    html+='<div style="color:#334155;font-size:11px">No sender data yet</div>';
+  }
+  html+='<div style="margin-top:12px;padding-top:12px;border-top:1px solid #1a2035">'+
+    '<div style="font-size:10px;color:#475569">Avg days between follow-ups</div>'+
+    '<div style="font-size:22px;font-weight:900;color:#f97316;margin-top:2px">'+avgFollowDays+'<span style="font-size:11px;color:#334155;font-weight:400"> days</span></div>'+
+  '</div></div>';
+
+  // ── ROW 4: Deal stage funnel ──
+  html+='<div style="'+card+'">'+
+    '<span style="'+label+'">🔀 Deal Stage Funnel</span>';
+  var stages=[['Prospecting','#475569'],['Contacted','#60a5fa'],['Sample Sent','#f97316'],['Negotiating','#facc15'],['Closed Won','#4ade80'],['Closed Lost','#ef4444']];
+  var maxStage=Math.max.apply(null,stages.map(function(s){return stageMap[s[0]]||0;}));
+  stages.forEach(function(s){
+    var cnt=stageMap[s[0]]||0;
+    var pct=maxStage?Math.round(cnt/maxStage*100):0;
+    html+='<div style="margin-bottom:8px">'+
+      '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">'+
+        '<span style="color:#94a3b8">'+s[0]+'</span>'+
+        '<span style="color:'+s[1]+';font-weight:700">'+cnt+'</span>'+
+      '</div>'+
+      '<div style="background:#111827;border-radius:4px;height:5px">'+
+        '<div style="background:'+s[1]+';height:5px;border-radius:4px;width:'+pct+'%"></div>'+
+      '</div></div>';
+  });
+  html+='</div>';
+
+  // Most active leads
+  html+='<div style="'+card+'grid-column:span 2">'+
+    '<span style="'+label+'">🏆 Most Active Leads</span>'+
+    '<table style="width:100%;border-collapse:collapse">';
+  topLeads.forEach(function(l,i){
+    var logs=(l.outreachLog||[]).length;
+    var lastLog=l.outreachLog&&l.outreachLog.length?l.outreachLog[l.outreachLog.length-1]:null;
+    html+='<tr style="border-bottom:1px solid #111827;cursor:pointer" onclick="openLp(\''+l.id+'\')">'+
+      '<td style="padding:7px 8px;width:20px"><span style="font-size:10px;color:#334155;font-weight:700">#'+(i+1)+'</span></td>'+
+      '<td style="padding:7px 8px"><div style="font-size:12px;color:#e2e8f0;font-weight:600">'+esc(l.company)+'</div>'+
+        (lastLog?'<div style="font-size:10px;color:#334155;margin-top:1px">'+esc(lastLog.note.substring(0,50))+(lastLog.note.length>50?'…':'')+'</div>':'')+
+      '</td>'+
+      '<td style="padding:7px 8px;text-align:center"><span style="background:rgba(249,115,22,.1);color:#f97316;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700">'+logs+' logs</span></td>'+
+      '<td style="padding:7px 8px;text-align:right"><span style="font-size:10px;color:#334155">'+esc(l.followUpDate||'—')+'</span></td>'+
+    '</tr>';
+  });
+  html+='</table></div>';
+
   html+='</div>';
   da.innerHTML=html;
 }
