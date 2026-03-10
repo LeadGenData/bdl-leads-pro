@@ -290,6 +290,7 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
       <button class="hb hb-g" onclick="reloadSheets()">🔄 Reload</button>
       <button class="hb hb-g" onclick="exportCSV()" title="Download all leads as CSV">⬇️ CSV</button>
       <button class="hb hb-g" onclick="fixOverdue()" title="Reset all overdue follow-up dates from last log entry">🔧 Fix Overdue</button>
+      <button class="hb" onclick="toggleSenderPanel()" title="Manage sender emails" style="background:rgba(100,116,139,.1);color:#94a3b8;border:1px solid #1e293b">⚙️ Senders</button>
       <button class="hb hb-g" onclick="testConnection()" title="Test connection to Google Sheets">🔌 Test</button>
       <button class="hb hb-g" onclick="testPost()" title="Test writing one lead to Sheets">✏️ Test Write</button>
       <button class="hb hb-o" onclick="syncAll()">☁️ Sync All</button>
@@ -308,6 +309,9 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
     </div>
 
     <div id="tab-leads">
+      <div id="sender-settings-panel" style="display:none;background:#0d1424;border:1px solid #1e293b;border-radius:10px;padding:14px;margin-bottom:10px;">
+        <div id="sender-settings"></div>
+      </div>
       <div id="alerts"></div>
       <div class="filters">
         <input id="srch" placeholder="🔍 Search company, contact, #…" oninput="rl()">
@@ -380,7 +384,12 @@ const NC={'Education':'#6366f1','Dental':'#14b8a6','HR/Dental':'#06b6d4','Commun
 const STATUSES=['Pending','Sent','Warm Lead','Bounced','Replied'];
 const DEAL_STAGES=['Prospecting','Contacted','Sample Sent','Negotiating','Closed Won','Closed Lost'];
 const DS_COLORS={'Prospecting':'#475569','Contacted':'#3b82f6','Sample Sent':'#eab308','Negotiating':'#ff6a00','Closed Won':'#22c55e','Closed Lost':'#ef4444'};
-const SENDERS=['skinnerdonald.data@gmail.com','michaelbrauns.dataoutreach@gmail.com'];
+var SENDERS=[];
+function loadSenders(){try{var s=JSON.parse(localStorage.getItem('bdl-senders'));if(s&&s.length){SENDERS=s;return;}}catch(e){}SENDERS=['skinnerdonald.data@gmail.com','michaelbrauns.dataoutreach@gmail.com'];}
+function saveSenders(){localStorage.setItem('bdl-senders',JSON.stringify(SENDERS));}
+function addSender(){var e=prompt('Enter new sender email:');if(!e||!e.trim()||!e.includes('@')){if(e!==null)alert('Please enter a valid email address.');return;}e=e.trim().toLowerCase();if(SENDERS.indexOf(e)>=0){alert('Already exists!');return;}SENDERS.push(e);saveSenders();renderSenderSettings();flash('✓ Sender added!');}
+function removeSender(i){if(SENDERS.length<=1){alert('Must keep at least one sender.');return;}if(!confirm('Remove '+SENDERS[i]+'?'))return;SENDERS.splice(i,1);saveSenders();renderSenderSettings();flash('Sender removed');}
+function renderSenderSettings(){var box=ge('sender-settings');if(!box)return;box.innerHTML='<div style="margin-bottom:8px;font-size:12px;color:#94a3b8;font-weight:600;letter-spacing:.5px">SENDER EMAILS</div>'+SENDERS.map(function(s,i){return'<div style="display:flex;align-items:center;justify-content:space-between;background:#0a0f1a;border:1px solid #1e293b;border-radius:6px;padding:7px 12px;margin-bottom:5px"><span style="color:#e2e8f0;font-size:12px">'+esc(s)+'</span><button onclick="removeSender('+i+')" style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer">Remove</button></div>';}).join('')+'<button onclick="addSender()" style="background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.2);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;width:100%;margin-top:4px">+ Add Sender Email</button>';}
 const NICHES=Object.keys(NC);
 
 // Timezone map by city/state
@@ -526,7 +535,7 @@ function login(){
       if(!usr||usr.password!==p){ge('load').classList.add('h');ge('login').classList.remove('h');e.textContent='Wrong username or password';e.classList.remove('h');return;}
       who=usr.name;
     } else {who=u;}
-    leads=loc.leads||[];clients=loc.clients||[];
+    leads=loc.leads||[];clients=loc.clients||[];loadSenders();
     setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();loadTemplates();setTimeout(checkReminders,2000);},500);
   });
 }
@@ -549,6 +558,7 @@ function syncAll(){
   n();
 }
 
+function toggleSenderPanel(){var p=ge('sender-settings-panel');if(!p)return;var open=p.style.display==='none';p.style.display=open?'block':'none';if(open)renderSenderSettings();}
 function testConnection(){
   setSyn('syn','Testing…');
   fetch(SHEET_URL+'?_='+Date.now())
@@ -621,9 +631,49 @@ function fbstat(f){
   rl();
 }
 function ra(){
-  var t=today(),ov=leads.filter(function(l){return l.followUpDate&&l.followUpDate<t&&['Bounced','Replied'].indexOf(l.status)<0;}),dt=leads.filter(function(l){return l.followUpDate===t&&['Bounced','Replied'].indexOf(l.status)<0;}),h='';
-  if(ov.length)h+='<div class="alert-box" style="background:rgba(239,68,68,.05);border-color:#ef4444"><span>🔥</span><div><p style="color:#fca5a5;font-weight:700;font-size:12px">'+ov.length+' Overdue Follow-ups</p><p style="color:#7f1d1d;font-size:11px;margin-top:2px">'+ov.slice(0,3).map(function(l){return l.company;}).join(', ')+(ov.length>3?' +more':'')+'</p></div></div>';
-  if(dt.length)h+='<div class="alert-box" style="background:rgba(255,106,0,.05);border-color:#ff6a00"><span>⏰</span><div><p style="color:#ffb347;font-weight:700;font-size:12px">'+dt.length+' Due Today</p><p style="color:#7c3a00;font-size:11px;margin-top:2px">'+dt.map(function(l){return l.company;}).join(', ')+'</p></div></div>';
+  var t=today();
+  var ov=leads.filter(function(l){return l.followUpDate&&l.followUpDate<t&&['Bounced','Replied'].indexOf(l.status)<0;});
+  var dt=leads.filter(function(l){return l.followUpDate===t&&['Bounced','Replied'].indexOf(l.status)<0;});
+  var warm=leads.filter(function(l){return l.status==='Warm Lead';});
+  var actionLeads=ov.concat(dt).concat(warm.filter(function(l){return ov.indexOf(l)<0&&dt.indexOf(l)<0;}));
+  // dedupe
+  var seen={};actionLeads=actionLeads.filter(function(l){if(seen[l.id])return false;seen[l.id]=true;return true;});
+  var h='';
+  if(!actionLeads.length){ge('alerts').innerHTML='';return;}
+
+  // header bar
+  h+='<div style="background:#0a0f1a;border:1px solid #1e293b;border-radius:10px;margin-bottom:12px;overflow:hidden;">';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#0d1424;border-bottom:1px solid #1e293b;">';
+  h+='<div style="display:flex;align-items:center;gap:10px;">';
+  h+='<span style="font-size:15px;">📋</span>';
+  h+='<span style="color:#f97316;font-weight:700;font-size:13px;letter-spacing:.3px">TODAY\'S ACTION PLAN</span>';
+  h+='<span style="font-size:11px;color:#475569;">'+t+'</span>';
+  h+='</div>';
+  h+='<div style="display:flex;gap:6px;">';
+  if(ov.length)h+='<span style="background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.2);border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;">🔥 '+ov.length+' Overdue</span>';
+  if(dt.length)h+='<span style="background:rgba(234,179,8,.1);color:#eab308;border:1px solid rgba(234,179,8,.2);border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;">⏰ '+dt.length+' Due Today</span>';
+  if(warm.length)h+='<span style="background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.2);border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;">♨️ '+warm.length+' Warm</span>';
+  h+='</div></div>';
+
+  // action rows
+  h+='<div style="padding:6px 0;">';
+  actionLeads.forEach(function(l){
+    var isOv=ov.indexOf(l)>=0,isDt=dt.indexOf(l)>=0,isWarm=l.status==='Warm Lead';
+    var badge=isOv?'<span style="background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.2);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">🔥 OVERDUE</span>':isDt?'<span style="background:rgba(234,179,8,.1);color:#eab308;border:1px solid rgba(234,179,8,.2);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">⏰ TODAY</span>':'<span style="background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.2);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">♨️ WARM</span>';
+    var lastLog=l.outreachLog&&l.outreachLog.length?l.outreachLog[l.outreachLog.length-1]:null;
+    var lastAction=lastLog?lastLog.note:'No log yet';
+    if(lastAction.length>60)lastAction=lastAction.substring(0,60)+'…';
+    h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid #0d1424;transition:background .15s" onmouseover="this.style.background=\'#0d1424\'" onmouseout="this.style.background=\'transparent\'">';
+    h+=badge;
+    h+='<span style="color:#e2e8f0;font-weight:600;font-size:12px;min-width:160px;cursor:pointer" onclick="openLp(\''+l.id+'\')">'+esc(l.company)+'</span>';
+    h+='<span style="color:#475569;font-size:11px;flex:1;">'+esc(lastAction)+'</span>';
+    h+='<div style="display:flex;gap:4px;">';
+    h+='<button class="ab" style="background:var(--orange);color:#fff;font-size:10px;padding:3px 8px" onclick="openLp(\''+l.id+'\')">Open</button>';
+    h+='<button class="ab" style="background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.2);font-size:10px;padding:3px 8px" onclick="quickLog(\''+l.id+'\')">📧 Log</button>';
+    h+='</div>';
+    h+='</div>';
+  });
+  h+='</div></div>';
   ge('alerts').innerHTML=h;
 }
 
