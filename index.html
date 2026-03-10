@@ -990,8 +990,13 @@ function lpAddLog(){
   var inp=ge('lp-log-inp'),note=(inp?inp.value.trim():'');if(!note)return;
   var logDate=(ge('lp-log-date')&&ge('lp-log-date').value)||today();
   var senderVal=(ge('lp-log-sender')&&ge('lp-log-sender').value)||'';
-  leads=leads.map(function(l){if(String(l.id)!==String(lpId))return l;return Object.assign({},l,{outreachLog:(l.outreachLog||[]).concat([{date:logDate,note:note,sender:senderVal}]),lastContacted:logDate,lastSender:senderVal,followUpDate:nbiz(logDate,3),followUpCount:(l.followUpCount||0)+1});});
-  if(inp)inp.value='';saveLoc();renderLp();rl();var u=leads.find(function(l){return String(l.id)===String(lpId);});if(u)syncLead(u);
+  var newFU=nbiz(logDate,3);
+  leads=leads.map(function(l){if(String(l.id)!==String(lpId))return l;return Object.assign({},l,{outreachLog:(l.outreachLog||[]).concat([{date:logDate,note:note,sender:senderVal}]),lastContacted:logDate,lastSender:senderVal,followUpDate:newFU,followUpCount:(l.followUpCount||0)+1});});
+  if(inp)inp.value='';
+  // Update the date fields in the panel so lpSave doesn't overwrite with old values
+  if(ge('lp-fu'))ge('lp-fu').value=newFU;
+  if(ge('lp-lc'))ge('lp-lc').value=logDate;
+  saveLoc();renderLp();rl();var u=leads.find(function(l){return String(l.id)===String(lpId);});if(u)syncLead(u);
   flash('✓ Logged! Follow-up #'+((leads.find(function(l){return String(l.id)===String(lpId);})||{}).followUpCount||1));
 }
 function quickLog(id){
