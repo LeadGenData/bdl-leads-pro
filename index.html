@@ -385,8 +385,18 @@ const STATUSES=['Pending','Sent','Warm Lead','Bounced','Replied'];
 const DEAL_STAGES=['Prospecting','Contacted','Sample Sent','Negotiating','Closed Won','Closed Lost'];
 const DS_COLORS={'Prospecting':'#475569','Contacted':'#3b82f6','Sample Sent':'#eab308','Negotiating':'#ff6a00','Closed Won':'#22c55e','Closed Lost':'#ef4444'};
 var SENDERS=[];
-function loadSenders(){try{var s=JSON.parse(localStorage.getItem('bdl-senders'));if(s&&s.length){SENDERS=s;return;}}catch(e){}SENDERS=['skinnerdonald.data@gmail.com','michaelbrauns.dataoutreach@gmail.com'];}
-function saveSenders(){localStorage.setItem('bdl-senders',JSON.stringify(SENDERS));}
+function loadSenders(sheetSenders){
+  // If passed from Sheets login response, use those
+  if(sheetSenders&&sheetSenders.length){SENDERS=sheetSenders;localStorage.setItem('bdl-senders',JSON.stringify(SENDERS));return;}
+  // Fallback to localStorage
+  try{var s=JSON.parse(localStorage.getItem('bdl-senders'));if(s&&s.length){SENDERS=s;return;}}catch(e){}
+  SENDERS=['skinnerdonald.data@gmail.com','michaelbrauns.dataoutreach@gmail.com'];
+}
+function saveSenders(){
+  localStorage.setItem('bdl-senders',JSON.stringify(SENDERS));
+  // Sync to Sheets
+  sheetWrite({action:'saveSenders',data:SENDERS});
+}
 function addSender(){var e=prompt('Enter new sender email:');if(!e||!e.trim()||!e.includes('@')){if(e!==null)alert('Please enter a valid email address.');return;}e=e.trim().toLowerCase();if(SENDERS.indexOf(e)>=0){alert('Already exists!');return;}SENDERS.push(e);saveSenders();renderSenderSettings();flash('✓ Sender added!');}
 function removeSender(i){if(SENDERS.length<=1){alert('Must keep at least one sender.');return;}if(!confirm('Remove '+SENDERS[i]+'?'))return;SENDERS.splice(i,1);saveSenders();renderSenderSettings();flash('Sender removed');}
 function renderSenderSettings(){var box=ge('sender-settings');if(!box)return;box.innerHTML='<div style="margin-bottom:8px;font-size:12px;color:#94a3b8;font-weight:600;letter-spacing:.5px">SENDER EMAILS</div>'+SENDERS.map(function(s,i){return'<div style="display:flex;align-items:center;justify-content:space-between;background:#0a0f1a;border:1px solid #1e293b;border-radius:6px;padding:7px 12px;margin-bottom:5px"><span style="color:#e2e8f0;font-size:12px">'+esc(s)+'</span><button onclick="removeSender('+i+')" style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer">Remove</button></div>';}).join('')+'<button onclick="addSender()" style="background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.2);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;width:100%;margin-top:4px">+ Add Sender Email</button>';}
@@ -422,6 +432,11 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function today(){return new Date().toISOString().split('T')[0];}
 function now2(){return new Date().toLocaleString();}
 function fmtDate(v){if(!v)return '';var d=new Date(v);return isNaN(d.getTime())?v:d.toISOString().split('T')[0];}
+function lcChanged(val){
+  if(!val)return;
+  var fu=ge('lp-fu');
+  if(fu)fu.value=nbiz(val,4);
+}
 function nbiz(from,days){var dt=new Date(from),n=0;days=days||3;while(n<days){dt.setDate(dt.getDate()+1);if(dt.getDay()!==0&&dt.getDay()!==6)n++;}return dt.toISOString().split('T')[0];}
 function flash(m,t){var e=ge('fmsg');e.textContent=m;e.className=t==='bad'?'bad':'ok';e.classList.remove('h');setTimeout(function(){e.classList.add('h');},2500);}
 function setSyn(s,t){var d=ge('sdot'),tx=ge('stxt');if(!d)return;d.className=s==='syn'?'s':s==='err'?'err':'';tx.textContent=t;}
@@ -436,7 +451,28 @@ function saveLoc(){
   localStorage.setItem('bdl-v11',JSON.stringify({leads:leads,clients:clients}));
 }
 function loadLoc(){try{var d=JSON.parse(localStorage.getItem('bdl-v11')||localStorage.getItem('bdl-v10')||'null');return d||{leads:null,clients:[]};}catch(e){return{leads:null,clients:[]};}}
-function normLeads(arr){return arr.map(function(l){['followUpDate','lastContacted'].forEach(function(k){if(l[k])l[k]=fmtDate(l[k]);});if(!l.city)l.city='';if(!l.state)l.state='';if(!l.timezone)l.timezone='';if(!l.title)l.title='';if(!l.lastSender)l.lastSender='';if(!l.dealStage)l.dealStage='Contacted';if(l.dealValue===undefined)l.dealValue='';if(!l.contacts||!l.contacts.length){l.contacts=l.email?[{id:String(Date.now())+'_m',name:l.contact||'',email:l.email,title:'',priority:'Primary',status:'Active'}]:[];}l.contacts=l.contacts.map(function(c){if(!c.status||c.status==='undefined')c.status='Active';if(!c.priority||c.priority==='undefined')c.priority='Primary';return c;});return l;});}
+function normLeads(arr){return arr.map(function(l){['followUpDate','lastContacted'].forEach(function(k){if(l[k])l[k]=fmtDate(l[k]);});
+  // Recalculate followUpDate — always derive from last log or lastContacted + 4 biz days
+  var refDate='';
+  if(l.outreachLog&&l.outreachLog.length){
+    var lastLog=l.outreachLog[l.outreachLog.length-1];
+    refDate=lastLog&&lastLog.date?lastLog.date:'';
+    if(refDate)l.lastContacted=refDate;
+  }
+  if(!refDate&&l.lastContacted)refDate=l.lastContacted;
+  // Auto-pull lastSender from last log entry that has a sender
+  if(l.outreachLog&&l.outreachLog.length){
+    for(var i=l.outreachLog.length-1;i>=0;i--){
+      if(l.outreachLog[i].sender){l.lastSender=l.outreachLog[i].sender;break;}
+    }
+  }
+  if(refDate){
+    var expected4=nbiz(refDate,4);
+    // Recalc if: no followUpDate, followUpDate is before refDate, or was set with old 3-day logic
+    if(!l.followUpDate||l.followUpDate<refDate||l.followUpDate===nbiz(refDate,3)){
+      l.followUpDate=expected4;
+    }
+  }if(!l.city)l.city='';if(!l.state)l.state='';if(!l.timezone)l.timezone='';if(!l.title)l.title='';if(!l.lastSender)l.lastSender='';if(!l.dealStage)l.dealStage='Contacted';if(l.dealValue===undefined)l.dealValue='';if(!l.contacts||!l.contacts.length){l.contacts=l.email?[{id:String(Date.now())+'_m',name:l.contact||'',email:l.email,title:'',priority:'Primary',status:'Active'}]:[];}l.contacts=l.contacts.map(function(c){if(!c.status||c.status==='undefined')c.status='Active';if(!c.priority||c.priority==='undefined'||['Primary','Backup','Backup 2'].indexOf(c.priority)<0)c.priority=c.status==='Bounced'?'Backup':'Primary';return c;});return l;});}
 function getPrimaryEmail(l){if(!l.contacts||!l.contacts.length)return l.email||'';var a=l.contacts.find(function(c){return c.status!=='Bounced';});return a?a.email:(l.contacts[0]?l.contacts[0].email:l.email||'');}
 
 // tz helpers
@@ -506,7 +542,12 @@ function login(){
         if(!ll)return sl;
         var slLog=(sl.outreachLog||[]).length;
         var llLog=(ll.outreachLog||[]).length;
-        return llLog>=slLog?ll:sl;
+        if(llLog>slLog)return ll; // local has more logs — local wins
+        if(slLog>llLog)return sl; // sheet has more logs — sheet wins
+        // Same log count — pick whichever was contacted more recently
+        var slDate=(sl.lastContacted||sl.followUpDate||'');
+        var llDate=(ll.lastContacted||ll.followUpDate||'');
+        return llDate>=slDate?ll:sl;
       });
       localLeads.forEach(function(ll){
         if(!leads.find(function(x){return String(x.id)===String(ll.id);}))leads.push(ll);
@@ -518,13 +559,17 @@ function login(){
     }
     clients=data.clients||loc.clients||[];
     saveLoc();
-    // Auto-push leads that are ahead of Sheets back up
+    // Auto-push leads that are ahead of Sheets back up (more logs OR updated followUpDate/lastContacted)
     var toSync=sheetLeads.filter(function(sl){
       var ll=leads.find(function(x){return String(x.id)===String(sl.id);});
-      return ll&&(ll.outreachLog||[]).length>(sl.outreachLog||[]).length;
+      if(!ll)return false;
+      if((ll.outreachLog||[]).length>(sl.outreachLog||[]).length)return true;
+      if(ll.followUpDate!==sl.followUpDate)return true;
+      if(ll.lastContacted!==sl.lastContacted)return true;
+      return false;
     });
     if(toSync.length){var si=0;(function doSync(){if(si>=toSync.length)return;syncLead(toSync[si]);si++;setTimeout(doSync,150);})();}
-    setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();loadTemplates();setTimeout(checkReminders,2000);},500);
+    loadSenders(data.senders||[]);setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();loadTemplates();setTimeout(checkReminders,2000);},500);
   })
   .catch(function(){
     // Fallback to localStorage if Sheets unreachable
@@ -635,7 +680,17 @@ function ra(){
   var ov=leads.filter(function(l){return l.followUpDate&&l.followUpDate<t&&['Bounced','Replied'].indexOf(l.status)<0;});
   var dt=leads.filter(function(l){return l.followUpDate===t&&['Bounced','Replied'].indexOf(l.status)<0;});
   var warm=leads.filter(function(l){return l.status==='Warm Lead';});
-  var actionLeads=ov.concat(dt).concat(warm.filter(function(l){return ov.indexOf(l)<0&&dt.indexOf(l)<0;}));
+  // Stale: Sent or Pending, last contacted 4+ days ago, no future followUpDate, not bounced/replied
+  var stale=leads.filter(function(l){
+    if(['Bounced','Replied','Warm Lead','Client'].indexOf(l.status)>=0)return false;
+    if(['Sent','Pending','Contacted'].indexOf(l.status)<0)return false;
+    if(l.followUpDate&&l.followUpDate>=t)return false; // already has future FU date
+    if(!l.lastContacted)return false;
+    var lc=new Date(l.lastContacted),td=new Date(t);
+    var days=Math.floor((td-lc)/(1000*60*60*24));
+    return days>=4;
+  });
+  var actionLeads=ov.concat(dt).concat(warm.filter(function(l){return ov.indexOf(l)<0&&dt.indexOf(l)<0;})).concat(stale.filter(function(l){return ov.indexOf(l)<0&&dt.indexOf(l)<0&&warm.indexOf(l)<0;}));
   // dedupe
   var seen={};actionLeads=actionLeads.filter(function(l){if(seen[l.id])return false;seen[l.id]=true;return true;});
   var h='';
@@ -653,13 +708,14 @@ function ra(){
   if(ov.length)h+='<span style="background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.2);border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;">🔥 '+ov.length+' Overdue</span>';
   if(dt.length)h+='<span style="background:rgba(234,179,8,.1);color:#eab308;border:1px solid rgba(234,179,8,.2);border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;">⏰ '+dt.length+' Due Today</span>';
   if(warm.length)h+='<span style="background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.2);border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;">♨️ '+warm.length+' Warm</span>';
+  if(stale.length)h+='<span style="background:rgba(100,116,139,.12);color:#94a3b8;border:1px solid rgba(100,116,139,.2);border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;">📬 '+stale.length+' Follow Up</span>';
   h+='</div></div>';
 
   // action rows
   h+='<div style="padding:6px 0;">';
   actionLeads.forEach(function(l){
-    var isOv=ov.indexOf(l)>=0,isDt=dt.indexOf(l)>=0,isWarm=l.status==='Warm Lead';
-    var badge=isOv?'<span style="background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.2);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">🔥 OVERDUE</span>':isDt?'<span style="background:rgba(234,179,8,.1);color:#eab308;border:1px solid rgba(234,179,8,.2);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">⏰ TODAY</span>':'<span style="background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.2);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">♨️ WARM</span>';
+    var isOv=ov.indexOf(l)>=0,isDt=dt.indexOf(l)>=0,isWarm=l.status==='Warm Lead',isStale=stale.indexOf(l)>=0;
+    var badge=isOv?'<span style="background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.2);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">🔥 OVERDUE</span>':isDt?'<span style="background:rgba(234,179,8,.1);color:#eab308;border:1px solid rgba(234,179,8,.2);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">⏰ TODAY</span>':isWarm?'<span style="background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.2);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">♨️ WARM</span>':'<span style="background:rgba(100,116,139,.12);color:#94a3b8;border:1px solid rgba(100,116,139,.2);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">📬 FOLLOW UP</span>';
     var lastLog=l.outreachLog&&l.outreachLog.length?l.outreachLog[l.outreachLog.length-1]:null;
     var lastAction=lastLog?lastLog.note:'No log yet';
     if(lastAction.length>60)lastAction=lastAction.substring(0,60)+'…';
@@ -730,7 +786,7 @@ function addLead(){
   var em=ge('ne').value.trim(),ct=ge('nct').value.trim();
   var contacts=em?[{id:String(Date.now())+'_0',name:ct,email:em,title:'',priority:'Primary',status:'Active'}]:[];
   var nextBdl=leads.reduce(function(max,l){var m=String(l.id).match(/^bdl_(\d+)$/);return m?Math.max(max,parseInt(m[1])):max;},0)+1;
-  var nl={id:'bdl_'+nextBdl,num:mn+1,company:co,contact:ct,email:em,title:'',contacts:contacts,niche:ge('nn').value,status:ge('ns').value,dealStage:'Contacted',dealValue:'',decisionMaker:ge('nd').value,notes:ge('nt').value,city:city,state:state,timezone:tz||'',followUpDate:nbiz(lc,3),lastContacted:lc,followUpCount:0,pitchSent:'',painPoints:'',servicesNeeded:'',outreachLog:[]};
+  var nl={id:'bdl_'+nextBdl,num:mn+1,company:co,contact:ct,email:em,title:'',contacts:contacts,niche:ge('nn').value,status:ge('ns').value,dealStage:'Contacted',dealValue:'',decisionMaker:ge('nd').value,notes:ge('nt').value,city:city,state:state,timezone:tz||'',followUpDate:nbiz(lc,4),lastContacted:lc,followUpCount:0,pitchSent:'',painPoints:'',servicesNeeded:'',outreachLog:[]};
   leads.unshift(nl);saveLoc();showAF=false;ge('afarea').innerHTML='';renderAll();flash('✓ Lead added!');syncLead(nl);
 }
 
@@ -751,7 +807,7 @@ function rl(){
     var bg=i%2===0?'#000':'rgba(255,255,255,.015)';
     return'<tr style="background:'+bg+'">'+
       '<td style="color:#222;font-family:monospace;font-size:11px">'+l.num+'</td>'+
-      '<td style="min-width:160px"><span class="clink'+(lpId===l.id?' on':'')+'" onclick="openLp(\''+l.id+'\')">">'+esc(l.company)+'</span>'+
+      '<td style="min-width:160px"><span class="clink'+(lpId===l.id?' on':'')+'" onclick="openLp(\''+l.id+'\')">'+esc(l.company)+'</span>'+
         (pri?'<br>'+pri:'')+'</td>'+
       '<td style="color:var(--text2);font-size:12px"><div>'+esc(l.contact||'—')+(l.title?'<span style="color:#475569;font-size:10px;margin-left:5px">'+esc(l.title)+'</span>':'')+'</div>'+(getPrimaryEmail(l)?'<div style="color:#333;font-size:10px;font-family:monospace">'+esc(getPrimaryEmail(l))+'</div>':'')+'</td>'+
       '<td><span style="color:'+nc+';font-size:11px;font-weight:700">'+esc(l.niche)+'</span></td>'+
@@ -789,7 +845,7 @@ function rl(){
   ge('lftr').textContent=filt.length+' of '+leads.length+' leads · auto-sorted by priority';
 }
 
-function ust(id,status){var lc=today();leads=leads.map(function(l){return String(l.id)===String(id)?Object.assign({},l,{status,lastContacted:lc,followUpDate:nbiz(lc,3)}):l;});saveLoc();rl();var u=leads.find(function(l){return String(l.id)===String(id);});if(u)syncLead(u);}
+function ust(id,status){var lc=today();leads=leads.map(function(l){return String(l.id)===String(id)?Object.assign({},l,{status,lastContacted:lc,followUpDate:nbiz(lc,4)}):l;});saveLoc();rl();var u=leads.find(function(l){return String(l.id)===String(id);});if(u)syncLead(u);}
 function dfu(id){
   var l=leads.find(function(x){return String(x.id)===String(id);});if(!l)return;
   // Pick sender — default to last used or first sender
@@ -804,7 +860,7 @@ function dfu(id){
     if(String(x.id)!==String(id))return x;
     return Object.assign({},x,{
       lastContacted:lc,lastSender:sender,
-      followUpDate:nbiz(lc,3),
+      followUpDate:nbiz(lc,4),
       followUpCount:(x.followUpCount||0)+1,
       outreachLog:(x.outreachLog||[]).concat([{date:lc,note:'Follow-up sent',sender:sender}])
     });
@@ -895,6 +951,7 @@ function renderLp(){
       '<span class="cc-status '+(c.status==='Bounced'?'bounced':'active')+'" style="margin-left:auto">'+esc(c.status)+'</span></div>'+
       '<div style="font-size:11px;color:#475569;font-family:monospace;margin-top:3px">'+esc(c.email)+'</div>'+
       '<div class="cc-actions">'+(c.status!=='Bounced'?'<button class="cc-btn" style="background:rgba(239,68,68,.08);color:#fca5a5;border-color:rgba(239,68,68,.2)" onclick="markContactBounced('+ci+')">🚫 Bounced</button>':'<button class="cc-btn" style="background:rgba(34,197,94,.08);color:#4ade80;border-color:rgba(34,197,94,.2)" onclick="markContactActive('+ci+')">✓ Reactivate</button>')+
+      '<select onchange="changeContactPriority('+ci+',this.value)" style="background:#111;border:1px solid #1f1f1f;border-radius:5px;padding:3px 6px;color:var(--text);font-size:11px;outline:none;cursor:pointer"><option value="Primary"'+(c.priority==='Primary'?' selected':'')+'>Primary</option><option value="Backup"'+(c.priority==='Backup'?' selected':'')+'>Backup</option><option value="Backup 2"'+(c.priority==='Backup 2'?' selected':'')+'>Backup 2</option></select>'+
       '<button class="cc-btn" style="background:#111;color:#475569;border-color:#1f1f1f;margin-left:auto" onclick="deleteContact('+ci+')">🗑</button></div></div>';}).join(''):'<p style="color:#222;font-size:12px">No contacts yet.</p>';
     return'<div class="lp-sec"><h3>👤 Contacts ('+cs.length+')</h3>'+ch+'<button onclick="openAddContact()" style="margin-top:6px;background:rgba(255,106,0,.08);color:var(--orange3);border:1px solid rgba(255,106,0,.2);border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;width:100%">+ Add Contact</button>'+
       '<div id="add-contact-form" class="h" style="margin-top:8px;background:#050505;border:1px solid #1f1f1f;border-radius:8px;padding:12px">'+
@@ -931,7 +988,7 @@ function renderLp(){
         '<div class="lp-f"><label>Niche</label><select id="lp-ni">'+nicopts+'</select></div>'+
         '<div class="lp-f"><label>Deal Stage</label><select id="lp-ds">'+DEAL_STAGES.map(function(s){return'<option'+(s===(l.dealStage||'Contacted')?' selected':'')+'>'+esc(s)+'</option>';}).join('')+'</select></div>'+
         '<div class="lp-f"><label>Expected Value ($)</label><input id="lp-dv" type="number" placeholder="e.g. 147" value="'+esc(l.dealValue||'')+'"></div>'+
-        '<div class="lp-f"><label>Last Contacted</label><input type="date" id="lp-lc" value="'+esc(l.lastContacted||'')+'"></div>'+
+        '<div class="lp-f"><label>Last Contacted</label><input type="date" id="lp-lc" value="'+esc(l.lastContacted||'')+'" oninput="lcChanged(this.value)" onchange="lcChanged(this.value)"></div>'+
         '<div class="lp-f"><label>Follow-up Date</label><input type="date" id="lp-fu" value="'+esc(l.followUpDate||'')+'"></div>'+
         '<div class="lp-f"><label>Follow-up Count</label><input id="lp-fc" value="'+(l.outreachLog||[]).length+'" readonly style="color:#555;cursor:not-allowed"></div>'+
       '</div></div>'+
@@ -984,13 +1041,13 @@ function lpSave(){
   saveLoc();rl();renderLp();flash('✓ Saved!');var u=leads.find(function(x){return String(x.id)===String(lpId);});if(u)syncLead(u);
 }
 function lpFU(){
-  var lc=today();leads=leads.map(function(l){if(String(l.id)!==String(lpId))return l;return Object.assign({},l,{lastContacted:lc,followUpDate:nbiz(lc,3),followUpCount:(l.followUpCount||0)+1,outreachLog:(l.outreachLog||[]).concat([{date:lc,note:'Follow-up sent'}])});});saveLoc();renderLp();rl();flash('✓ Follow-up logged!');var u=leads.find(function(l){return String(l.id)===String(lpId);});if(u)syncLead(u);
+  var lc=today();leads=leads.map(function(l){if(String(l.id)!==String(lpId))return l;return Object.assign({},l,{lastContacted:lc,followUpDate:nbiz(lc,4),followUpCount:(l.followUpCount||0)+1,outreachLog:(l.outreachLog||[]).concat([{date:lc,note:'Follow-up sent'}])});});saveLoc();renderLp();rl();flash('✓ Follow-up logged!');var u=leads.find(function(l){return String(l.id)===String(lpId);});if(u)syncLead(u);
 }
 function lpAddLog(){
   var inp=ge('lp-log-inp'),note=(inp?inp.value.trim():'');if(!note)return;
   var logDate=(ge('lp-log-date')&&ge('lp-log-date').value)||today();
   var senderVal=(ge('lp-log-sender')&&ge('lp-log-sender').value)||'';
-  var newFU=nbiz(logDate,3);
+  var newFU=nbiz(logDate,4);
   leads=leads.map(function(l){if(String(l.id)!==String(lpId))return l;return Object.assign({},l,{outreachLog:(l.outreachLog||[]).concat([{date:logDate,note:note,sender:senderVal}]),lastContacted:logDate,lastSender:senderVal,followUpDate:newFU,followUpCount:(l.followUpCount||0)+1});});
   if(inp)inp.value='';
   // Update the date fields in the panel so lpSave doesn't overwrite with old values
@@ -1001,13 +1058,72 @@ function lpAddLog(){
 }
 function quickLog(id){
   var l=leads.find(function(x){return String(x.id)===String(id);});if(!l)return;
-  var note=prompt('Log for '+l.company+' (Follow-up #'+((l.followUpCount||0)+1)+'):\nWhat did you send/do?');
-  if(!note||!note.trim())return;
-  var dateInput=prompt('Date? (leave blank for today)','');
-  var logDate=(dateInput&&dateInput.trim()&&dateInput.trim().match(/^\d{4}-\d{2}-\d{2}$/))?dateInput.trim():today();
-  leads=leads.map(function(x){if(String(x.id)!==String(id))return x;return Object.assign({},x,{outreachLog:(x.outreachLog||[]).concat([{date:logDate,note:note.trim()}]),lastContacted:logDate,followUpDate:nbiz(logDate,3),followUpCount:(x.followUpCount||0)+1});});
-  saveLoc();renderAll();var u=leads.find(function(x){return String(x.id)===String(id);});if(u)syncLead(u);
-  flash('✓ Logged! FU #'+((leads.find(function(x){return String(x.id)===String(id);})||{}).followUpCount||1)+' for '+l.company);
+  // Remove existing modal if any
+  var ex=document.getElementById('ql-modal');if(ex)ex.remove();
+  var modal=document.createElement('div');
+  modal.id='ql-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML='<div style="background:#0d1117;border:1px solid #1e293b;border-radius:12px;padding:20px;width:420px;max-width:92vw;">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'+
+    '<span style="color:#f97316;font-weight:700;font-size:13px;">📧 Log Activity — '+esc(l.company)+'</span>'+
+    '<button onclick="document.getElementById(\'ql-modal\').remove()" style="background:none;border:none;color:#475569;font-size:18px;cursor:pointer;">×</button>'+
+    '</div>'+
+    '<div style="margin-bottom:10px;">'+
+    '<label style="color:#64748b;font-size:11px;display:block;margin-bottom:5px;">NOTE / WHAT DID YOU SEND?</label>'+
+    '<textarea id="ql-note" rows="3" style="width:100%;background:#111;border:1px solid #1e293b;border-radius:7px;padding:8px 10px;color:#e2e8f0;font-size:12px;outline:none;resize:vertical;box-sizing:border-box;" placeholder="e.g. Sent intro email about dental contact lists…"></textarea>'+
+    '</div>'+
+    '<div style="margin-bottom:10px;">'+
+    '<label style="color:#64748b;font-size:11px;display:block;margin-bottom:5px;">SENDER</label>'+
+    '<div style="display:flex;gap:6px;">'+
+    '<select id="ql-sender" style="flex:1;background:#111;border:1px solid #1e293b;border-radius:7px;padding:8px 10px;color:#e2e8f0;font-size:12px;outline:none;">'+
+    '<option value="">— select sender —</option>'+
+    SENDERS.map(function(s){return'<option value="'+esc(s)+'">'+esc(s)+'</option>';}).join('')+
+    '</select>'+
+    '<button onclick="qlAddSender()" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:7px;padding:8px 12px;font-size:12px;cursor:pointer;white-space:nowrap;">+ New</button>'+
+    '</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:14px;">'+
+    '<div style="flex:1;">'+
+    '<label style="color:#64748b;font-size:11px;display:block;margin-bottom:5px;">DATE SENT</label>'+
+    '<input type="date" id="ql-date" value="'+today()+'" oninput="var f=document.getElementById(\'ql-fu\');if(f&&this.value)f.value=nbiz(this.value,4);" onchange="var f=document.getElementById(\'ql-fu\');if(f&&this.value)f.value=nbiz(this.value,4);" style="width:100%;background:#111;border:1px solid #1e293b;border-radius:7px;padding:8px 10px;color:#e2e8f0;font-size:12px;outline:none;box-sizing:border-box;">'+
+    '</div>'+
+    '<div style="flex:1;">'+
+    '<label style="color:#64748b;font-size:11px;display:block;margin-bottom:5px;">NEXT FOLLOW-UP</label>'+
+    '<input type="date" id="ql-fu" value="'+nbiz(today(),4)+'" style="width:100%;background:#111;border:1px solid #1e293b;border-radius:7px;padding:8px 10px;color:#e2e8f0;font-size:12px;outline:none;box-sizing:border-box;">'+
+    '</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;">'+
+    '<button onclick="document.getElementById(\'ql-modal\').remove()" style="background:#1e293b;color:#94a3b8;border:none;border-radius:7px;padding:8px 16px;font-size:12px;cursor:pointer;">Cancel</button>'+
+    '<button onclick="qlSave(\''+id+'\')" style="background:#f97316;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;">+ Save Log</button>'+
+    '</div>'+
+    '</div>';
+  document.body.appendChild(modal);
+  setTimeout(function(){var n=document.getElementById('ql-note');if(n)n.focus();},50);
+}
+function qlAddSender(){
+  var email=prompt('Enter new sender email:');
+  if(!email||!email.trim())return;
+  email=email.trim();
+  if(SENDERS.indexOf(email)<0){SENDERS.push(email);saveSenders();}
+  var sel=document.getElementById('ql-sender');
+  if(sel){
+    var opt=document.createElement('option');
+    opt.value=email;opt.textContent=email;
+    sel.appendChild(opt);
+    sel.value=email;
+  }
+}
+function qlSave(id){
+  var note=(document.getElementById('ql-note')||{}).value||'';
+  if(!note.trim()){flash('⚠ Please add a note');return;}
+  var logDate=(document.getElementById('ql-date')||{}).value||today();
+  var fuDate=(document.getElementById('ql-fu')||{}).value||nbiz(logDate,4);
+  var senderVal=(document.getElementById('ql-sender')||{}).value||'';
+  leads=leads.map(function(x){if(String(x.id)!==String(id))return x;return Object.assign({},x,{outreachLog:(x.outreachLog||[]).concat([{date:logDate,note:note.trim(),sender:senderVal}]),lastContacted:logDate,lastSender:senderVal||x.lastSender,followUpDate:fuDate,followUpCount:(x.followUpCount||0)+1});});
+  saveLoc();renderAll();
+  var u=leads.find(function(x){return String(x.id)===String(id);});if(u)syncLead(u);
+  var m=document.getElementById('ql-modal');if(m)m.remove();
+  flash('✓ Logged for '+(leads.find(function(x){return String(x.id)===String(id);})||{company:''}).company+'!');
 }
 function toggleLogEdit(idx){
   var el=ge('log-edit-'+idx);if(!el)return;
@@ -1094,6 +1210,23 @@ function markContactBounced(ci){
   flash('Bounced — next contact promoted to Primary');
 }
 function markContactActive(ci){leads=leads.map(function(x){if(String(x.id)!==String(lpId))return x;var contacts=(x.contacts||[]).slice();if(contacts[ci])contacts[ci]=Object.assign({},contacts[ci],{status:'Active'});return Object.assign({},x,{contacts:contacts});});saveLoc();renderLp();rl();var u=leads.find(function(x){return String(x.id)===String(lpId);});if(u)syncLead(u);flash('✓ Reactivated!');}
+function changeContactPriority(ci, priority){
+  leads=leads.map(function(x){
+    if(String(x.id)!==String(lpId))return x;
+    var contacts=(x.contacts||[]).slice();
+    if(contacts[ci]){
+      // If setting to Primary, demote existing Primary to Backup
+      if(priority==='Primary'){
+        contacts=contacts.map(function(c,i){return i!==ci&&c.priority==='Primary'?Object.assign({},c,{priority:'Backup'}):c;});
+      }
+      contacts[ci]=Object.assign({},contacts[ci],{priority:priority});
+    }
+    return Object.assign({},x,{contacts:contacts});
+  });
+  saveLoc();renderLp();rl();
+  var u=leads.find(function(x){return String(x.id)===String(lpId);});if(u)syncLead(u);
+  flash('✓ Priority updated!');
+}
 function deleteContact(ci){if(!confirm('Remove this contact?'))return;leads=leads.map(function(x){if(String(x.id)!==String(lpId))return x;var contacts=(x.contacts||[]).slice();contacts.splice(ci,1);return Object.assign({},x,{contacts:contacts});});saveLoc();renderLp();rl();var u=leads.find(function(x){return String(x.id)===String(lpId);});if(u)syncLead(u);}
 
 // CONVERT
@@ -1131,9 +1264,9 @@ function fixOverdue(){
       lastDate=sorted[sorted.length-1].date;
     }
     if(!lastDate)lastDate=l.lastContacted||t;
-    var newFU=nbiz(lastDate,3);
+    var newFU=nbiz(lastDate,4);
     // If even that is still in the past, set to next 3 business days from today
-    if(newFU<t)newFU=nbiz(t,3);
+    if(newFU<t)newFU=nbiz(t,4);
     fixed++;
     return Object.assign({},l,{followUpDate:newFU,lastContacted:lastDate||l.lastContacted});
   });
@@ -1310,7 +1443,7 @@ function saveQNote(id){
   leads=leads.map(function(x){
     if(String(x.id)!==String(id))return x;
     var log=(x.outreachLog||[]).concat([{date:logDate,note:note,sender:sender}]);
-    return Object.assign({},x,{outreachLog:log,lastContacted:logDate,followUpDate:nbiz(logDate,3)});
+    return Object.assign({},x,{outreachLog:log,lastContacted:logDate,followUpDate:nbiz(logDate,4)});
   });
   saveLoc();
   var row=document.getElementById('qnote-row-'+id);
@@ -1484,7 +1617,7 @@ function renderDash(){
         return'<th style="text-align:'+(i>2?'right':'left')+';font-size:10px;color:#333;padding:4px 8px;font-weight:600">'+h+'</th>';
       }).join('')+'</tr>'+
     topLeads.map(function(l){
-      return'<tr style="border-bottom:1px solid #060606;cursor:pointer" onclick="openLp(\''+l.id+'\')">">'+
+      return'<tr style="border-bottom:1px solid #060606;cursor:pointer" onclick="openLp(\''+l.id+'\')">'+
         '<td style="padding:6px 8px;font-size:12px;color:var(--text2)">'+esc(l.company)+'</td>'+
         '<td style="padding:6px 8px;font-size:11px;color:#475569">'+esc(l.contact||'—')+'</td>'+
         '<td style="padding:6px 8px"><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,106,0,.1);color:var(--orange3)">'+esc(l.status)+'</span></td>'+
