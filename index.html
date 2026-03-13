@@ -204,16 +204,6 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
 .sender-chip.michael{background:rgba(168,85,247,.08);color:#c084fc;border-color:rgba(168,85,247,.15)}
 
 /* TEMPLATES PANEL */
-#tpl-panel{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.92);z-index:250;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);animation:fi .2s ease}
-#tpl-box{background:#0a0a0a;border:1px solid #1f1f1f;border-radius:16px;width:680px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column}
-#tpl-box h2{font-size:15px;font-weight:800;padding:16px 18px;border-bottom:1px solid #111}
-.tpl-list{flex:1;overflow-y:auto;padding:12px}
-.tpl-card{background:#050505;border:1px solid #111;border-radius:10px;padding:12px 14px;margin-bottom:8px}
-.tpl-card h4{font-size:12px;font-weight:800;color:var(--orange3);margin-bottom:4px}
-.tpl-card p{font-size:11px;color:#475569;margin-bottom:8px}
-.tpl-body{font-size:11px;color:var(--text2);background:#111;border-radius:6px;padding:8px 10px;white-space:pre-wrap;line-height:1.6;max-height:120px;overflow-y:auto}
-.tpl-actions{display:flex;gap:6px;margin-top:8px}
-.tpl-btn{font-size:11px;padding:4px 12px;border-radius:5px;cursor:pointer;font-weight:700;border:1px solid}
 
 /* QUICK NOTE */
 .qnote-form{background:#0a0a0a;border:1px solid var(--orange);border-radius:8px;padding:8px;margin-top:4px;display:flex;gap:6px;animation:fup .15s ease}
@@ -221,10 +211,6 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
 .qnote-inp:focus{border-color:var(--orange)}
 
 /* MOBILE */
-/* DELETED TAB */
-.del-row{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid #0d0d0d;transition:background .15s}
-.del-row:hover{background:rgba(239,68,68,.03)!important}
-.del-badge{font-size:10px;font-weight:800;background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.2);border-radius:20px;padding:2px 8px;margin-left:auto}
 @media(max-width:768px){
   .hacts .hb-g{display:none}
   .stats{grid-template-columns:repeat(3,1fr)}
@@ -289,7 +275,6 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
       <div class="syns"><span id="sdot"></span><span id="stxt">Ready</span></div>
       <span id="fmsg" class="h"></span>
       <span id="ulbl"></span>
-      <button class="hb hb-g" onclick="toggleTemplates()" title="Follow-up email templates">📝 Templates</button>
       <button class="hb hb-o" onclick="copyForClaude()" title="Copy pipeline summary to paste into Claude.ai">📋 Copy for Claude</button>
       <button class="hb hb-g" onclick="reloadSheets()">🔄 Reload</button>
       <button class="hb hb-g" onclick="exportCSV()" title="Download all leads as CSV">⬇️ CSV</button>
@@ -309,7 +294,6 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
         <button class="tab on" onclick="stab('leads',this)">📋 Leads</button>
         <button class="tab" onclick="stab('clients',this)">🏆 Clients</button>
         <button class="tab" onclick="stab('dashboard',this)">📊 Dashboard</button>
-        <button class="tab" id="del-tab-btn" onclick="stab('deleted',this)">🗑 Deleted</button>
       </div>
     </div>
 
@@ -340,6 +324,9 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
           <option value="michaelbrauns">Michael</option>
         </select>
         <button class="addb" onclick="togaf()">+ Add Lead</button>
+        <button class="addb" style="background:linear-gradient(135deg,#3b82f6,#6366f1);margin-left:6px" onclick="trigImport()">⬆ Import CSV</button>
+        <button class="addb" style="background:linear-gradient(135deg,#0ea5e9,#6366f1);margin-left:6px" onclick="showQuickImport()">⚡ Quick Emails</button>
+        <input type="file" id="csvFileIn" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleImport(event)">
       </div>
       <div id="afarea"></div>
       <div id="larea"></div>
@@ -348,7 +335,6 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
 
     <div id="tab-clients" class="h"><div id="carea"></div></div>
     <div id="tab-dashboard" class="h"><div id="darea"></div></div>
-    <div id="tab-deleted" class="h"><div id="del-area"></div></div>
   </div>
 </div>
 
@@ -430,7 +416,7 @@ const TZ_MAP={
   'Washington':'America/Los_Angeles','Maryland':'America/New_York','Virginia':'America/New_York'
 };
 
-var leads=[],clients=[],deletedLeads=[],who='',lpId=null,cvt=null,showAF=false;
+var leads=[],clients=[],who='',lpId=null,cvt=null,showAF=false;
 var clockInterval=null;
 
 function ge(id){return document.getElementById(id);}
@@ -454,9 +440,9 @@ function saveLoc(){
       email:pem||l.email||''
     });
   });
-  localStorage.setItem('bdl-v11',JSON.stringify({leads:leads,clients:clients,deletedLeads:deletedLeads}));
+  localStorage.setItem('bdl-v11',JSON.stringify({leads:leads,clients:clients}));
 }
-function loadLoc(){try{var d=JSON.parse(localStorage.getItem('bdl-v11')||localStorage.getItem('bdl-v10')||'null');return d||{leads:null,clients:[],deletedLeads:[]};}catch(e){return{leads:null,clients:[],deletedLeads:[]};}}
+function loadLoc(){try{var d=JSON.parse(localStorage.getItem('bdl-v11')||localStorage.getItem('bdl-v10')||'null');return d||{leads:null,clients:[]};}catch(e){return{leads:null,clients:[]};}}
 function normLeads(arr){return arr.map(function(l){['followUpDate','lastContacted'].forEach(function(k){if(l[k])l[k]=fmtDate(l[k]);});
   // Recalculate followUpDate — always derive from last log or lastContacted + 4 biz days
   var refDate='';
@@ -478,8 +464,8 @@ function normLeads(arr){return arr.map(function(l){['followUpDate','lastContacte
     if(!l.followUpDate||l.followUpDate<refDate||l.followUpDate===nbiz(refDate,3)){
       l.followUpDate=expected4;
     }
-  }if(!l.city)l.city='';if(!l.state)l.state='';if(!l.timezone)l.timezone='';if(!l.title)l.title='';if(!l.lastSender)l.lastSender='';if(!l.dealStage)l.dealStage='Contacted';if(l.dealValue===undefined)l.dealValue='';if(!l.contacts||!l.contacts.length){l.contacts=l.email?[{id:String(Date.now())+'_m',name:l.contact||'',email:l.email,title:'',priority:'Primary',status:'Active'}]:[];}l.contacts=l.contacts.map(function(c){if(!c.status||c.status==='undefined')c.status='Active';if(!c.priority||c.priority==='undefined'||['Primary','Backup','Backup 2'].indexOf(c.priority)<0)c.priority=c.status==='Bounced'?'Backup':'Primary';return c;});return l;});}
-function getPrimaryEmail(l){if(!l.contacts||!l.contacts.length)return l.email||'';var a=l.contacts.find(function(c){return c.status!=='Bounced';});return a?a.email:(l.contacts[0]?l.contacts[0].email:l.email||'');}
+  }if(!l.city)l.city='';if(!l.state)l.state='';if(!l.timezone)l.timezone='';if(!l.title)l.title='';if(!l.lastSender)l.lastSender='';if(!l.dealStage)l.dealStage='Contacted';if(l.dealValue===undefined)l.dealValue='';if(!l.contactLog)l.contactLog=[];if(!l.contacts||!l.contacts.length){l.contacts=l.email?[{id:String(Date.now())+'_m',name:l.contact||'',email:l.email,title:'',priority:'Primary',status:'Active'}]:[];}l.contacts=l.contacts.map(function(c){if(!c.status||c.status==='undefined')c.status='Active';if(!c.priority||c.priority==='undefined'||['Primary','Backup','Backup 2'].indexOf(c.priority)<0)c.priority=c.status==='Bounced'?'Backup':'Primary';return c;});return l;});}
+function getPrimaryEmail(l){if(!l.contactLog)l.contactLog=[];if(!l.contacts||!l.contacts.length)return l.email||'';var a=l.contacts.find(function(c){return c.status!=='Bounced';});return a?a.email:(l.contacts[0]?l.contacts[0].email:l.email||'');}
 
 // tz helpers
 function guessTimezone(l){if(l.timezone)return l.timezone;var k=l.city||l.state||'';for(var city in TZ_MAP){if(k.toLowerCase().indexOf(city.toLowerCase())>=0)return TZ_MAP[city];}return null;}
@@ -563,7 +549,7 @@ function login(){
     } else if(localLeads.length>0){
       leads=localLeads;
     }
-    clients=data.clients||loc.clients||[];deletedLeads=data.deletedLeads||loc.deletedLeads||[];
+    clients=data.clients||loc.clients||[];
     saveLoc();
     // Auto-push leads that are ahead of Sheets back up (more logs OR updated followUpDate/lastContacted)
     var toSync=sheetLeads.filter(function(sl){
@@ -575,7 +561,7 @@ function login(){
       return false;
     });
     if(toSync.length){var si=0;(function doSync(){if(si>=toSync.length)return;syncLead(toSync[si]);si++;setTimeout(doSync,150);})();}
-    loadSenders(data.senders||[]);setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();loadTemplates();setTimeout(checkReminders,2000);},500);
+    loadSenders(data.senders||[]);setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();setTimeout(checkReminders,2000);},500);
   })
   .catch(function(){
     // Fallback to localStorage if Sheets unreachable
@@ -586,8 +572,8 @@ function login(){
       if(!usr||usr.password!==p){ge('load').classList.add('h');ge('login').classList.remove('h');e.textContent='Wrong username or password';e.classList.remove('h');return;}
       who=usr.name;
     } else {who=u;}
-    leads=loc.leads||[];clients=loc.clients||[];deletedLeads=loc.deletedLeads||[];loadSenders();
-    setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();loadTemplates();setTimeout(checkReminders,2000);},500);
+    leads=loc.leads||[];clients=loc.clients||[];loadSenders();
+    setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();setTimeout(checkReminders,2000);},500);
   });
 }
 function logout(){ge('app').classList.add('h');ge('login').classList.remove('h');ge('lu').value='';ge('lpw').value='';leads=[];clients=[];who='';closeLp();stopClock();}
@@ -649,8 +635,8 @@ function stopClock(){if(clockInterval)clearInterval(clockInterval);}
 function updateClocks(){if(lpId){var l=leads.find(function(x){return String(x.id)===String(lpId);});if(l)renderLpClocks(l);}}
 
 function initNF(){var s=ge('fni');if(s.options.length>1)return;NICHES.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;s.appendChild(o);});}
-function stab(n,btn){['leads','clients','dashboard','deleted'].forEach(function(t){ge('tab-'+t).classList.add('h');});document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});ge('tab-'+n).classList.remove('h');btn.classList.add('on');if(n==='clients')rc();if(n==='dashboard')rd();if(n==='deleted')renderDeleted();}
-function renderAll(){rs();ra();rl();renderDash();ge('lcount').textContent=leads.length+' leads · '+clients.length+' clients'+(deletedLeads.length?' · 🗑 '+deletedLeads.length:'');updateDelTabBadge();}
+function stab(n,btn){['leads','clients','dashboard'].forEach(function(t){ge('tab-'+t).classList.add('h');});document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});ge('tab-'+n).classList.remove('h');btn.classList.add('on');if(n==='clients')rc();if(n==='dashboard')rd();}
+function renderAll(){rs();ra();rl();renderDash();ge('lcount').textContent=leads.length+' leads · '+clients.length+' clients';}
 
 function rs(){
   var total=leads.length,w=leads.filter(function(l){return l.status==='Warm Lead';}).length,
@@ -912,6 +898,20 @@ function renderLp(){
     '</div>';
   }).join('');
 
+  // Contact change log
+  var contactLogHtml=(l.contactLog&&l.contactLog.length)?
+    '<div style="margin-top:10px;border-top:1px solid #111;padding-top:10px">'+
+    '<div style="font-size:10px;font-weight:800;color:#333;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Contact Change History</div>'+
+    (l.contactLog||[]).slice().reverse().map(function(e){
+      return'<div style="font-size:11px;color:#475569;padding:4px 0;border-bottom:1px solid #0d0d0d">'+
+        '<span style="font-family:monospace;color:#222">'+esc(e.date)+'</span>'+
+        ' &middot; <span style="color:#888">'+esc(e.type==='email'?'Email':'Name')+'</span> changed: '+
+        '<span style="color:#fca5a5;text-decoration:line-through">'+esc(e.from)+'</span>'+
+        ' &rarr; <span style="color:#4ade80">'+esc(e.to)+'</span>'+
+      '</div>';
+    }).join('')+
+    '</div>':'';
+
   var logHtml=(l.outreachLog||[]).length?
     (l.outreachLog||[]).slice().reverse().map(function(e,ri){
       var realIdx=(l.outreachLog||[]).length-1-ri;
@@ -1010,7 +1010,7 @@ function renderLp(){
 
     // Log
     '<div class="lp-sec"><h3>📋 Outreach Log <span style="color:#333;font-size:10px;font-weight:400">('+((l.outreachLog||[]).length)+' entries)</span></h3>'+
-      '<div style="max-height:140px;overflow-y:auto;margin-bottom:8px">'+logHtml+'</div>'+
+      '<div style="max-height:140px;overflow-y:auto;margin-bottom:8px">'+logHtml+'</div>'+contactLogHtml+
       '<div style="display:flex;gap:7px;margin-bottom:6px;flex-wrap:wrap">'+
         '<input type="date" id="lp-log-date" style="background:#111;border:1px solid #1f1f1f;border-radius:6px;padding:7px 9px;color:var(--text);font-size:12px;outline:none;width:150px" value="'+today()+'">'+
         '<select id="lp-log-sender" style="flex:1;min-width:120px;background:#111;border:1px solid #1f1f1f;border-radius:6px;padding:7px 9px;color:var(--text);font-size:11px;outline:none"><option value="">— sender (optional) —</option>'+SENDERS.map(function(s){return'<option value="'+esc(s)+'">'+esc(s)+'</option>';}).join('')+'</select>'+
@@ -1034,7 +1034,9 @@ function lpSave(){
   var fuDate=ge('lp-fu').value||l.followUpDate;
   var lcDate=ge('lp-lc').value||l.lastContacted;
   leads=leads.map(function(x){if(String(x.id)!==String(lpId))return x;return Object.assign({},x,{
-    company:ge('lp-co').value||x.company,contact:ge('lp-ct').value,
+    company:ge('lp-co').value||x.company,
+    contact:(function(){var newCt=ge('lp-ct').value;if(newCt&&newCt!==x.contact){var log={date:today(),from:x.contact||'(none)',to:newCt,field:'contact'};return newCt;}return ge('lp-ct').value;}()),
+    contactLog:(function(){var newCt=ge('lp-ct').value;var newEm=ge('lp-em')?ge('lp-em').value:null;var log=x.contactLog||[];if(newCt&&newCt!==x.contact)log=log.concat([{date:today(),type:'name',from:x.contact||'(none)',to:newCt}]);if(newEm&&newEm!==x.email)log=log.concat([{date:today(),type:'email',from:x.email||'(none)',to:newEm}]);return log;}()),
     title:ge('lp-title')?ge('lp-title').value:(x.title||''),
     city:city,state:state,timezone:tz,
     decisionMaker:ge('lp-dm').value,status:ge('lp-st').value,niche:ge('lp-ni').value,
@@ -1161,7 +1163,7 @@ function deleteLog(idx){
   saveLoc();renderLp();rl();var u=leads.find(function(x){return String(x.id)===String(lpId);});if(u)syncLead(u);
   flash('✓ Log entry deleted!');
 }
-function lpDel(){var l=leads.find(function(x){return String(x.id)===String(lpId);});if(!l)return;if(!confirm('Move "'+l.company+'" to Deleted? You can restore it anytime.'))return;var id=lpId;closeLp();deletedLeads.unshift(Object.assign({},l,{deletedDate:today()}));leads=leads.filter(function(x){return String(x.id)!==String(id);});saveLoc();renderAll();flash('Moved to 🗑 Deleted — tap tab to restore','bad');}
+function lpDel(){if(!confirm('Delete '+((leads.find(function(l){return String(l.id)===String(lpId);})||{}).company||'this lead')+'?'))return;var id=lpId;closeLp();leads=leads.filter(function(l){return String(l.id)!==String(id);});saveLoc();renderAll();flash('Deleted','bad');syncDelete(id);}
 
 // CONTACT MANAGEMENT
 function openAcModal(){
@@ -1405,72 +1407,218 @@ function copyForClaude(){
 
 
 
-// ── DELETED LEADS ────────────────────────────────────
-function updateDelTabBadge(){
-  var btn=ge('del-tab-btn');if(!btn)return;
-  btn.textContent=deletedLeads.length?'🗑 Deleted ('+deletedLeads.length+')':'🗑 Deleted';
+// ── BULK CSV IMPORT ──────────────────────────────────
+function trigImport(){ge('csvFileIn').click();}
+
+function handleImport(e){
+  var file=e.target.files[0];
+  if(!file)return;
+  var ext=file.name.split('.').pop().toLowerCase();
+  if(ext==='csv'){
+    var reader=new FileReader();
+    reader.onload=function(ev){parseCSVImport(ev.target.result);};
+    reader.readAsText(file);
+  } else {
+    flash('Please upload a CSV file (.csv)','bad');
+  }
+  e.target.value='';
 }
-function renderDeleted(){
-  var da=ge('del-area');if(!da)return;
-  updateDelTabBadge();
-  if(!deletedLeads.length){
-    da.innerHTML='<div style="text-align:center;padding:70px 20px"><div style="font-size:52px;margin-bottom:14px">🗑</div><div style="color:#333;font-size:13px;font-weight:600">Trash is empty</div><div style="color:#222;font-size:12px;margin-top:6px">Deleted leads will appear here so you can restore them.</div></div>';
+
+function parseCSVImport(text){
+  var lines=text.split(/\r?\n/).filter(function(l){return l.trim();});
+  if(lines.length<2){flash('CSV appears empty','bad');return;}
+
+  var headers=lines[0].split(',').map(function(h){return h.trim().replace(/^"|"$/g,'').toLowerCase();});
+
+  var colMap={
+    company:     ['company','company name','business','organization','name'],
+    contact:     ['contact','contact name','first name','full name','person','rep'],
+    email:       ['email','email address','work email'],
+    phone:       ['phone','phone number','mobile','cell'],
+    niche:       ['niche','industry','sector','vertical'],
+    status:      ['status','lead status','stage'],
+    notes:       ['notes','note','comments','details'],
+    sender:      ['sender','assigned to','owner'],
+    followUpDate:['follow up date','followupdate','follow-up date','next contact'],
+    website:     ['website','url','web','site'],
+    title:       ['title','job title','role','position'],
+    num:         ['#','num','number','lead #','lead number']
+  };
+
+  function findCol(key){
+    var aliases=colMap[key]||[key];
+    for(var i=0;i<aliases.length;i++){var idx=headers.indexOf(aliases[i]);if(idx>-1)return idx;}
+    return -1;
+  }
+  var cols={};Object.keys(colMap).forEach(function(k){cols[k]=findCol(k);});
+  function getVal(row,key){var idx=cols[key];if(idx<0||idx>=row.length)return'';return row[idx].trim().replace(/^"|"$/g,'');}
+
+  // ── Group rows by company name ──
+  var grouped={};var groupOrder=[];
+  var existingEmails=leads.map(function(l){return(l.email||'').toLowerCase();});
+
+  for(var i=1;i<lines.length;i++){
+    var row=lines[i].match(/(".*?"|[^,]+)/g)||lines[i].split(',');
+    row=row.map(function(c){return c?c.trim().replace(/^"|"$/g,''):''});
+    var company=getVal(row,'company');
+    if(!company)continue;
+    var key=company.toLowerCase().trim();
+    if(!grouped[key]){grouped[key]={company:company,rows:[],num:getVal(row,'num'),niche:getVal(row,'niche'),status:getVal(row,'status'),notes:getVal(row,'notes'),sender:getVal(row,'sender'),followUpDate:getVal(row,'followUpDate'),website:getVal(row,'website')};groupOrder.push(key);}
+    grouped[key].rows.push(row);
+  }
+
+  var newLeads=[];var imported=0;var dupes=0;var skipped=0;
+
+  groupOrder.forEach(function(key){
+    var g=grouped[key];
+    // Check if company already exists in leads
+    var existingLead=leads.find(function(l){return l.company.toLowerCase().trim()===key;});
+
+    // Build contacts array from all rows for this company
+    var contacts=[];
+    g.rows.forEach(function(row,ri){
+      var email=getVal(row,'email');
+      var contact=getVal(row,'contact');
+      if(!email&&!contact)return;
+      if(email&&existingEmails.indexOf(email.toLowerCase())>-1){dupes++;return;}
+      var priority=ri===0?'Primary':ri===1?'Backup':'Backup 2';
+      contacts.push({id:String(Date.now())+'-'+ri+Math.random().toString(36).slice(2,5),name:contact,email:email,title:getVal(row,'title'),priority:priority,status:'Active'});
+      if(email)existingEmails.push(email.toLowerCase());
+    });
+
+    if(!contacts.length){skipped++;return;}
+
+    if(existingLead){
+      // Merge new contacts into existing lead
+      var merged=Object.assign({},existingLead,{contacts:(existingLead.contacts||[]).concat(contacts)});
+      leads=leads.map(function(l){return String(l.id)===String(existingLead.id)?merged:l;});
+      flash('↩ Merged '+contacts.length+' contact(s) into existing lead: '+g.company);
+      syncLead(merged);
+      return;
+    }
+
+    var primaryContact=contacts[0]||{};
+    var nl={
+      id:'bdl_imp_'+Date.now()+Math.random().toString(36).slice(2,6),
+      num:g.num||String(leads.length+newLeads.length+1),
+      company:g.company,
+      contact:primaryContact.name||'',
+      email:primaryContact.email||'',
+      title:primaryContact.title||'',
+      contacts:contacts,
+      niche:g.niche||'',
+      status:g.status||'Pending',
+      notes:g.notes||'',
+      sender:g.sender||who,
+      followUpDate:g.followUpDate||today(),
+      website:g.website||'',
+      lastContacted:today(),
+      followUpCount:0,
+      outreachLog:[],
+      contactLog:[]
+    };
+    newLeads.push(nl);
+    imported++;
+  });
+
+  if(!imported&&!dupes&&!skipped){flash('No valid leads found in CSV','bad');return;}
+
+  leads=leads.concat(newLeads);
+  saveLoc();
+  newLeads.forEach(function(l){syncLead(l);});
+  renderAll();
+
+  var msg='✓ Imported '+imported+' lead'+(imported!==1?'s':'');
+  if(dupes)msg+=' · '+dupes+' dupe email'+(dupes!==1?'s':'')+' skipped';
+  if(skipped)msg+=' · '+skipped+' blank row'+(skipped!==1?'s':'')+' skipped';
+  flash(msg);
+}
+
+
+// ── QUICK EMAIL IMPORT ───────────────────────────────
+function showQuickImport(){
+  // Populate sender dropdown from senders list
+  var sel=ge('qi-sender');
+  if(sel){
+    sel.innerHTML='<option value="">— Me ('+who+') —</option>';
+    if(window.sendersList&&sendersList.length){
+      sendersList.forEach(function(s){
+        var opt=document.createElement('option');
+        opt.value=s.name||s.email||s;
+        opt.textContent=s.name||s.email||s;
+        sel.appendChild(opt);
+      });
+    }
+  }
+  ge('qi-panel').classList.remove('h');
+  setTimeout(function(){if(ge('qi-emails'))ge('qi-emails').focus();},100);
+}
+
+function runQuickImport(){
+  var raw=(ge('qi-emails').value||'').trim();
+  if(!raw){flash('Paste at least one email','bad');return;}
+  
+  var niche=ge('qi-niche').value||'';
+  var sender=(ge('qi-sender').value||who).trim();
+  var notes=(ge('qi-notes').value||'').trim();
+  var fuDate=today();
+
+  var emails=raw.split(/[\n,;\s]+/).map(function(e){return e.trim().toLowerCase();}).filter(function(e){return e&&e.indexOf('@')>-1;});
+  if(!emails.length){flash('No valid emails found','bad');return;}
+
+  var existingEmails=leads.map(function(l){return(l.email||'').toLowerCase();});
+  var imported=0,dupes=0;
+  var newLeads=[];
+
+  emails.forEach(function(email,i){
+    if(existingEmails.indexOf(email)>-1){dupes++;return;}
+    // Derive company name from email domain
+    var domain=email.split('@')[1]||'';
+    var company=domain.replace(/\.(com|io|co|org|net|ai|edu|gov)$/,'').replace(/^www\./, '').split('.')[0];
+    company=company.charAt(0).toUpperCase()+company.slice(1);
+    var nl={
+      id:'qi_'+Date.now()+'_'+i+Math.random().toString(36).slice(2,5),
+      num:String(leads.length+newLeads.length+1),
+      company:company,
+      contact:'',
+      email:email,
+      title:'',
+      contacts:[{id:'c'+Date.now()+'_'+i,name:'',email:email,title:'',priority:'Primary',status:'Active'}],
+      niche:niche,
+      status:'Sent',
+      notes:notes,
+      sender:sender,
+      followUpDate:nbiz(fuDate,7),
+      lastContacted:fuDate,
+      followUpCount:1,
+      outreachLog:[{date:fuDate,note:'Bulk email sent'+(notes?' — '+notes:''),sender:sender}],
+      contactLog:[],
+      website:'',
+      city:'',state:'',timezone:''
+    };
+    newLeads.push(nl);
+    existingEmails.push(email);
+    imported++;
+  });
+
+  if(!imported){
+    ge('qi-status').textContent=dupes+' already in tracker';
     return;
   }
-  var rows=deletedLeads.map(function(l,i){
-    var nc=({'Education':'#6366f1','Dental':'#14b8a6','Healthcare/Staffing':'#f87171','SaaS':'#8b5cf6','Finance/Lending':'#10b981','AI/Tech':'#a78bfa'})[l.niche]||'#475569';
-    var sc=({'Warm Lead':'#ff6a00','Sent':'#3b82f6','Pending':'#eab308','Bounced':'#ef4444','Replied':'#a855f7'})[l.status]||'#333';
-    var bg=i%2===0?'#000':'rgba(255,255,255,.013)';
-    return'<tr style="background:'+bg+';opacity:.7">'+
-      '<td style="color:#222;font-family:monospace;font-size:11px">'+l.num+'</td>'+
-      '<td style="font-weight:700;color:var(--text2)">'+esc(l.company)+'</td>'+
-      '<td style="color:#475569;font-size:12px">'+esc(l.contact||'—')+'</td>'+
-      '<td><span style="color:'+nc+';font-size:11px;font-weight:700">'+esc(l.niche||'—')+'</span></td>'+
-      '<td><span style="background:'+sc+';color:#fff;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">'+esc(l.status)+'</span></td>'+
-      '<td style="color:#333;font-size:11px;font-family:monospace">'+(l.deletedDate||'—')+'</td>'+
-      '<td><div style="display:flex;gap:4px">'+
-        '<button class="ab" style="background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2)" onclick="restoreLead(\''+l.id+'\')">↩ Restore</button>'+
-        '<button class="ab" style="background:rgba(239,68,68,.08);color:#fca5a5;border:1px solid rgba(239,68,68,.2)" onclick="permDelete(\''+l.id+'\')">✕ Forever</button>'+
-      '</div></td>'+
-    '</tr>';
-  }).join('');
-  da.innerHTML=
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'+
-      '<div style="font-size:12px;color:#475569;font-weight:600">'+deletedLeads.length+' deleted lead'+(deletedLeads.length!==1?'s':'')+
-        ' &nbsp;<span style="color:#222;font-weight:400;font-size:11px">— Restore to bring back, or permanently delete</span></div>'+
-      '<button class="hb hb-g" style="color:#fca5a5;border-color:rgba(239,68,68,.2)" onclick="clearAllDeleted()">🗑 Empty Trash</button>'+
-    '</div>'+
-    '<div class="twrap"><table><thead><tr>'+
-      '<th>#</th><th>Company</th><th>Contact</th><th>Niche</th><th>Status</th><th>Deleted On</th><th>Actions</th>'+
-    '</tr></thead><tbody>'+rows+'</tbody></table></div>';
-}
-function restoreLead(id){
-  var l=deletedLeads.find(function(x){return String(x.id)===String(id);});
-  if(!l)return;
-  var restored=Object.assign({},l);
-  delete restored.deletedDate;
-  leads.push(restored);
-  deletedLeads=deletedLeads.filter(function(x){return String(x.id)!==String(id);});
-  saveLoc();renderDeleted();renderAll();
-  flash('✓ '+l.company+' restored!');
-  syncLead(restored);
-}
-function permDelete(id){
-  var l=deletedLeads.find(function(x){return String(x.id)===String(id);});
-  if(!l||!confirm('Permanently delete "'+l.company+'"? This cannot be undone.'))return;
-  deletedLeads=deletedLeads.filter(function(x){return String(x.id)!==String(id);});
-  saveLoc();renderDeleted();renderAll();
-  flash('Permanently deleted','bad');
-  syncDelete(id);
-}
-function clearAllDeleted(){
-  if(!deletedLeads.length)return;
-  if(!confirm('Permanently delete all '+deletedLeads.length+' leads in trash? Cannot be undone.'))return;
-  var ids=deletedLeads.map(function(l){return l.id;});
-  deletedLeads=[];
-  saveLoc();renderDeleted();renderAll();
-  ids.forEach(function(id,i){setTimeout(function(){syncDelete(id);},i*100);});
-  flash('Trash emptied','bad');
+
+  leads=leads.concat(newLeads);
+  saveLoc();
+  newLeads.forEach(function(l){syncLead(l);});
+  renderAll();
+
+  ge('qi-emails').value='';
+  ge('qi-notes').value='';
+  ge('qi-status').textContent='';
+  ge('qi-panel').classList.add('h');
+
+  var msg='✓ Added '+imported+' lead'+(imported!==1?'s':'');
+  if(dupes)msg+=' · '+dupes+' already in tracker';
+  flash(msg);
 }
 
 // ── EXPORT CSV ──────────────────────────────────────
@@ -1530,95 +1678,6 @@ function saveQNote(id){
 }
 
 // ── TEMPLATES ────────────────────────────────────────
-var DEFAULT_TEMPLATES=[
-  {
-    id:'t1',name:'Initial Pitch — Education',
-    desc:'First outreach to education companies',
-    body:'Hi [Name],\n\nI came across [Company] and love what you\'re building.\n\nI specialize in providing verified contact lists of Principals, Superintendents, Curriculum Directors, and Instructional Coaches — the exact decision makers who can bring your product into schools and districts.\n\nIf you have a specific state or region you want to target first I can pull a custom list tailored to your needs.\n\nI\'d love to send you a free sample so you can see the quality for yourself — no commitment needed.\n\nWould that be helpful?\n\nBest,\nSkinner Donald'
-  },
-  {
-    id:'t2',name:'Initial Pitch — Dental',
-    desc:'First outreach to dental companies',
-    body:'Hi [Name],\n\nI came across [Company] and was impressed by what you\'re doing.\n\nI specialize in providing verified contact lists of Dental Practice Owners, Orthodontists, and Office Managers — targeted by city or state so you can fill specific markets fast.\n\nI\'d love to send over a free sample so you can see the quality for yourself — no commitment needed.\n\nWould that be helpful?\n\nBest,\nSkinner Donald'
-  },
-  {
-    id:'t3',name:'Follow-up #1 — No Reply',
-    desc:'First follow-up after no response',
-    body:'Hi [Name],\n\nJust following up on my last note — wanted to see if this landed at a good time.\n\nIf you\'re targeting specific states or regions I can pull a free sample so you can see exactly what\'s available.\n\nWhich states are you most focused on right now?\n\nBest,\nSkinner Donald'
-  },
-  {
-    id:'t4',name:'Follow-up #2 — Final Chase',
-    desc:'Last follow-up before moving on',
-    body:'Hi [Name],\n\nI\'ll keep this short — I have a sample list ready for [Company] whenever you want it. No commitment, completely free.\n\nIf the timing isn\'t right just let me know and I\'ll check back in a few months.\n\nBest,\nSkinner Donald'
-  },
-  {
-    id:'t5',name:'Sample Sent — Follow-up',
-    desc:'After sending a sample, following up for feedback',
-    body:'Hi [Name],\n\nJust checking in on the sample I sent over — did you get a chance to look at it?\n\nHappy to answer any questions about the data or pull a larger sample for a different region if that would be more useful.\n\nBest,\nSkinner Donald'
-  }
-];
-
-var templates=[];
-function loadTemplates(){
-  try{var t=JSON.parse(localStorage.getItem('bdl-templates'));if(t&&t.length){templates=t;return;}}catch(e){}
-  templates=DEFAULT_TEMPLATES.map(function(t){return Object.assign({},t);});
-  saveTemplates();
-}
-function saveTemplates(){localStorage.setItem('bdl-templates',JSON.stringify(templates));}
-
-function toggleTemplates(){
-  var p=ge('tpl-panel');
-  if(!p)return;
-  if(p.classList.contains('h')){loadTemplates();renderTemplates();p.classList.remove('h');}
-  else p.classList.add('h');
-}
-
-function renderTemplates(){
-  var list=ge('tpl-list');if(!list)return;
-  list.innerHTML=templates.map(function(t,i){
-    return'<div class="tpl-card">'+
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'+
-        '<span style="font-size:12px;font-weight:800;color:var(--orange3)">'+esc(t.name)+'</span>'+
-        '<span style="font-size:10px;color:#333;margin-left:auto">'+esc(t.desc)+'</span>'+
-      '</div>'+
-      '<div class="tpl-body">'+esc(t.body)+'</div>'+
-      '<div class="tpl-actions">'+
-        '<button class="tpl-btn" style="background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;border-color:transparent" onclick="copyTemplate('+i+')">📋 Copy</button>'+
-        '<button class="tpl-btn" style="background:#111;color:#475569;border-color:#1f1f1f" onclick="editTemplate('+i+')">✏️ Edit</button>'+
-        '<button class="tpl-btn" style="background:rgba(239,68,68,.08);color:#fca5a5;border-color:rgba(239,68,68,.2)" onclick="deleteTemplate('+i+')">🗑</button>'+
-      '</div>'+
-    '</div>';
-  }).join('')+(templates.length===0?'<p style="color:#222;text-align:center;padding:24px">No templates yet. Add one below!</p>':'');
-}
-
-function copyTemplate(i){
-  var t=templates[i];if(!t)return;
-  navigator.clipboard.writeText(t.body).then(function(){flash('✓ Template copied!');}).catch(function(){
-    var ta=document.createElement('textarea');ta.value=t.body;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);flash('✓ Template copied!');
-  });
-}
-
-function editTemplate(i){
-  var t=templates[i];if(!t)return;
-  var newName=prompt('Template name:',t.name);if(newName===null)return;
-  var newDesc=prompt('Description:',t.desc);if(newDesc===null)return;
-  var newBody=prompt('Email body:\n(use [Name] and [Company] as placeholders)',t.body);if(newBody===null)return;
-  templates[i]={id:t.id,name:newName,desc:newDesc,body:newBody};
-  saveTemplates();renderTemplates();flash('✓ Template saved!');
-}
-
-function deleteTemplate(i){
-  if(!confirm('Delete this template?'))return;
-  templates.splice(i,1);saveTemplates();renderTemplates();
-}
-
-function addTemplate(){
-  var name=prompt('Template name:','New Template');if(!name)return;
-  var desc=prompt('Description (short):','');
-  var body=prompt('Email body:','Hi [Name],\n\n\n\nBest,\nSkinner Donald');if(!body)return;
-  templates.push({id:'t'+Date.now(),name:name,desc:desc||'',body:body});
-  saveTemplates();renderTemplates();flash('✓ Template added!');
-}
 
 // ── BROWSER REMINDER CHECK ───────────────────────────
 function checkReminders(){
@@ -1817,6 +1876,176 @@ function renderDash(){
   });
   html+='</table></div>';
 
+  // ── LOCATION ANALYTICS ──────────────────────────────
+
+  // Build state map: {state: {total, replied, warm, niches:{}, months:{}}}
+  var stateData={};
+  var nicheStateData={};
+  var monthNicheData={};
+  var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  leads.forEach(function(l){
+    var st=(l.state||'').trim().toUpperCase();
+    var ni=l.niche||'Other';
+    var isReplied=l.status==='Replied'||l.status==='Warm Lead';
+    var lc=l.lastContacted||'';
+    var mon=lc?parseInt(lc.split('-')[1])-1:-1;
+
+    // State map
+    if(st){
+      if(!stateData[st])stateData[st]={total:0,replied:0,warm:0,niches:{}};
+      stateData[st].total++;
+      if(isReplied)stateData[st].replied++;
+      if(l.status==='Warm Lead')stateData[st].warm++;
+      stateData[st].niches[ni]=(stateData[st].niches[ni]||0)+1;
+    }
+
+    // Niche+State combo
+    var nsk=ni+'||'+(st||'Unknown');
+    if(!nicheStateData[nsk])nicheStateData[nsk]={niche:ni,state:st||'Unknown',total:0,replied:0};
+    nicheStateData[nsk].total++;
+    if(isReplied)nicheStateData[nsk].replied++;
+
+    // Month+Niche
+    if(mon>=0){
+      var mk=mon+'||'+ni;
+      if(!monthNicheData[mk])monthNicheData[mk]={month:mon,niche:ni,total:0,replied:0};
+      monthNicheData[mk].total++;
+      if(isReplied)monthNicheData[mk].replied++;
+    }
+  });
+
+  // Top states by reply rate (min 3 leads)
+  var topStates=Object.keys(stateData).filter(function(s){return stateData[s].total>=3;})
+    .sort(function(a,b){
+      var ra=stateData[a].total?stateData[a].replied/stateData[a].total:0;
+      var rb=stateData[b].total?stateData[b].replied/stateData[b].total:0;
+      return rb-ra;
+    }).slice(0,8);
+
+  // Top niche+state combos (min 2 leads)
+  var topCombos=Object.keys(nicheStateData).filter(function(k){return nicheStateData[k].total>=2;})
+    .sort(function(a,b){
+      var ra=nicheStateData[a].total?nicheStateData[a].replied/nicheStateData[a].total:0;
+      var rb=nicheStateData[b].total?nicheStateData[b].replied/nicheStateData[b].total:0;
+      return rb-ra;
+    }).slice(0,6);
+
+  // Best months by niche
+  var nicheMonths={};
+  Object.keys(monthNicheData).forEach(function(k){
+    var d=monthNicheData[k];
+    if(!nicheMonths[d.niche])nicheMonths[d.niche]=new Array(12).fill(0).map(function(){return{total:0,replied:0};});
+    nicheMonths[d.niche][d.month].total+=d.total;
+    nicheMonths[d.niche][d.month].replied+=d.replied;
+  });
+
+  var hasLocationData=Object.keys(stateData).length>0;
+  var hasMonthData=Object.keys(monthNicheData).length>0;
+
+  // ── Location analytics HTML ──
+  html+='<div style="'+card+'grid-column:1/-1;margin-top:4px">';
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">';
+  html+='<span style="font-size:13px;font-weight:800;color:#e2e8f0">📍 Location Analytics</span>';
+  html+='<span style="font-size:10px;color:#334155">State field required on each lead · Updates as you add data</span>';
+  html+='</div>';
+
+  if(!hasLocationData){
+    html+='<div style="text-align:center;padding:40px 20px">';
+    html+='<div style="font-size:36px;margin-bottom:10px">📍</div>';
+    html+='<div style="font-size:13px;color:#334155;font-weight:600">No location data yet</div>';
+    html+='<div style="font-size:11px;color:#222;margin-top:6px">Add the State field to your leads as replies come in.<br>This section will show you which states convert best by niche and season.</div>';
+    html+='</div>';
+  } else {
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">';
+
+    // Panel 1: Top states by reply rate
+    html+='<div>';
+    html+='<div style="font-size:10px;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🗺️ Top States by Reply Rate</div>';
+    if(topStates.length){
+      topStates.forEach(function(st,i){
+        var d=stateData[st];
+        var rate=Math.round(d.replied/d.total*100);
+        var clr=rate>=30?'#4ade80':rate>=15?'#facc15':'#f97316';
+        var topNiche=Object.keys(d.niches).sort(function(a,b){return d.niches[b]-d.niches[a];})[0]||'';
+        html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:7px 10px;background:#050510;border-radius:7px;border:1px solid #111">';
+        html+='<span style="font-size:11px;color:#334155;font-weight:700;min-width:14px">'+(i+1)+'</span>';
+        html+='<span style="font-size:13px;font-weight:800;color:#e2e8f0;min-width:28px">'+esc(st)+'</span>';
+        html+='<div style="flex:1">';
+        html+='<div style="background:#111827;border-radius:3px;height:4px"><div style="background:'+clr+';height:4px;border-radius:3px;width:'+Math.min(rate*2,100)+'%"></div></div>';
+        if(topNiche)html+='<div style="font-size:9px;color:#334155;margin-top:2px">'+esc(topNiche)+'</div>';
+        html+='</div>';
+        html+='<span style="font-size:12px;font-weight:800;color:'+clr+'">'+rate+'%</span>';
+        html+='<span style="font-size:10px;color:#334155">'+d.total+' leads</span>';
+        html+='</div>';
+      });
+    } else {
+      html+='<div style="color:#334155;font-size:11px;padding:20px 0;text-align:center">Add state to 3+ leads to see rankings</div>';
+    }
+    html+='</div>';
+
+    // Panel 2: Best niche+state combos
+    html+='<div>';
+    html+='<div style="font-size:10px;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🏆 Best Niche + State Combos</div>';
+    if(topCombos.length){
+      var NC2={'Education':'#60a5fa','Dental':'#34d399','Healthcare/Staffing':'#f472b6','SaaS':'#a78bfa','Finance/Lending':'#facc15','Real Estate':'#fb923c','AI/Tech':'#e879f9'};
+      topCombos.forEach(function(k,i){
+        var d=nicheStateData[k];
+        var rate=Math.round(d.replied/d.total*100);
+        var clr=NC2[d.niche]||'#475569';
+        html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:7px 10px;background:#050510;border-radius:7px;border:1px solid #111">';
+        html+='<span style="font-size:11px;color:#334155;font-weight:700;min-width:14px">'+(i+1)+'</span>';
+        html+='<div style="flex:1">';
+        html+='<div style="font-size:11px;font-weight:700;color:'+clr+'">'+esc(d.niche)+'</div>';
+        html+='<div style="font-size:10px;color:#475569">'+esc(d.state)+' · '+d.total+' leads</div>';
+        html+='</div>';
+        html+='<div style="text-align:right">';
+        html+='<div style="font-size:13px;font-weight:800;color:'+(rate>=20?'#4ade80':rate>=10?'#facc15':'#f97316')+'" >'+rate+'%</div>';
+        html+='<div style="font-size:9px;color:#334155">reply rate</div>';
+        html+='</div>';
+        html+='</div>';
+      });
+    } else {
+      html+='<div style="color:#334155;font-size:11px;padding:20px 0;text-align:center">Add state to 2+ leads per niche to see combos</div>';
+    }
+    html+='</div>';
+
+    // Panel 3: Best months by niche (season heatmap)
+    html+='<div>';
+    html+='<div style="font-size:10px;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">📅 Best Months by Niche</div>';
+    var topNiches2=Object.keys(nicheMonths).slice(0,4);
+    if(topNiches2.length){
+      var NC3={'Education':'#60a5fa','Dental':'#34d399','Healthcare/Staffing':'#f472b6','SaaS':'#a78bfa','Finance/Lending':'#facc15','Real Estate':'#fb923c','AI/Tech':'#e879f9'};
+      topNiches2.forEach(function(ni){
+        var months=nicheMonths[ni];
+        var maxRate=0;
+        months.forEach(function(m){if(m.total>=2){var r=m.replied/m.total;if(r>maxRate)maxRate=r;}});
+        html+='<div style="margin-bottom:10px">';
+        html+='<div style="font-size:10px;font-weight:700;color:'+(NC3[ni]||'#475569')+';margin-bottom:5px">'+esc(ni)+'</div>';
+        html+='<div style="display:flex;gap:2px">';
+        months.forEach(function(m,mi){
+          var rate=m.total>=1?m.replied/m.total:0;
+          var intensity=maxRate>0?rate/maxRate:0;
+          var alpha=Math.round(intensity*100)/100;
+          var bg=m.total>=1?'rgba(249,115,22,'+Math.max(alpha,0.08)+')':'#111827';
+          var tooltip=MONTHS[mi]+': '+m.total+' leads'+(m.total>=1?' · '+Math.round(rate*100)+'% reply':'');
+          html+='<div title="'+tooltip+'" style="flex:1;height:20px;background:'+bg+';border-radius:2px;cursor:default"></div>';
+        });
+        html+='</div>';
+        html+='<div style="display:flex;justify-content:space-between;margin-top:2px">';
+        html+='<span style="font-size:8px;color:#1e293b">J</span><span style="font-size:8px;color:#1e293b">F</span><span style="font-size:8px;color:#1e293b">M</span><span style="font-size:8px;color:#1e293b">A</span><span style="font-size:8px;color:#1e293b">M</span><span style="font-size:8px;color:#1e293b">J</span><span style="font-size:8px;color:#1e293b">J</span><span style="font-size:8px;color:#1e293b">A</span><span style="font-size:8px;color:#1e293b">S</span><span style="font-size:8px;color:#1e293b">O</span><span style="font-size:8px;color:#1e293b">N</span><span style="font-size:8px;color:#1e293b">D</span>';
+        html+='</div>';
+        html+='</div>';
+      });
+    } else {
+      html+='<div style="color:#334155;font-size:11px;padding:20px 0;text-align:center">Data builds up as you log outreach over time</div>';
+    }
+    html+='</div>';
+
+    html+='</div>'; // end 3-col grid
+  }
+  html+='</div>'; // end location card
+
   html+='</div>';
   da.innerHTML=html;
 }
@@ -1860,16 +2089,52 @@ function saveNewContact(){
 </script>
 
 <!-- TEMPLATES PANEL -->
-<div id="tpl-panel" class="h">
-  <div id="tpl-box">
+
+<div id="qi-panel" class="h" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.92);z-index:250;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)">
+  <div style="background:#0a0a0a;border:1px solid #1f1f1f;border-radius:16px;width:520px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #111">
-      <h2 style="font-size:15px;font-weight:800;margin:0">📝 Follow-up Templates</h2>
-      <button onclick="toggleTemplates()" style="background:none;border:none;color:#333;font-size:18px;cursor:pointer">✕</button>
+      <div>
+        <div style="font-size:14px;font-weight:800;color:var(--text2)">⚡ Quick Email Import</div>
+        <div style="font-size:11px;color:#333;margin-top:2px">Paste emails — one per line. Fill details when they reply.</div>
+      </div>
+      <button onclick="ge('qi-panel').classList.add('h')" style="background:none;border:none;color:#333;font-size:18px;cursor:pointer">✕</button>
     </div>
-    <div class="tpl-list" id="tpl-list"></div>
-    <div style="padding:12px 14px;border-top:1px solid #111;display:flex;gap:8px">
-      <button onclick="addTemplate()" style="background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer">+ New Template</button>
-      <button onclick="toggleTemplates()" style="background:#111;color:#475569;border:1px solid #1f1f1f;border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer">Close</button>
+    <div style="padding:16px 18px;flex:1;overflow-y:auto">
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:#475569;font-weight:700;display:block;margin-bottom:6px">EMAILS (one per line)</label>
+        <textarea id="qi-emails" rows="10" placeholder="sophie@inspiren.com&#10;khaled@medely.com&#10;kyle@alphadogagency.com&#10;..." style="width:100%;background:#111;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;color:#e2e8f0;font-size:12px;font-family:monospace;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div>
+          <label style="font-size:11px;color:#475569;font-weight:700;display:block;margin-bottom:5px">NICHE (optional)</label>
+          <select id="qi-niche" style="width:100%;background:#111;border:1px solid #1e293b;border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:12px;outline:none">
+            <option value="">— Unknown —</option>
+            <option>Education</option>
+            <option>Dental</option>
+            <option>Healthcare/Staffing</option>
+            <option>SaaS</option>
+            <option>Finance/Lending</option>
+            <option>AI/Tech</option>
+            <option>Real Estate</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#475569;font-weight:700;display:block;margin-bottom:5px">SENDER</label>
+          <select id="qi-sender" style="width:100%;background:#111;border:1px solid #1e293b;border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:12px;outline:none">
+            <option value="">— Me —</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:11px;color:#475569;font-weight:700;display:block;margin-bottom:5px">NOTES (optional — e.g. "Bulk pitch sent 3/13")</label>
+        <input id="qi-notes" placeholder="e.g. Bulk dental pitch sent 3/13" style="width:100%;background:#111;border:1px solid #1e293b;border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:12px;outline:none;box-sizing:border-box">
+      </div>
+    </div>
+    <div style="padding:12px 18px;border-top:1px solid #111;display:flex;gap:8px;align-items:center">
+      <button onclick="runQuickImport()" style="background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:12px;font-weight:800;cursor:pointer">⚡ Import</button>
+      <button onclick="ge('qi-panel').classList.add('h')" style="background:#111;color:#475569;border:1px solid #1f1f1f;border-radius:8px;padding:9px 14px;font-size:12px;cursor:pointer">Cancel</button>
+      <span id="qi-status" style="font-size:11px;color:#475569;margin-left:auto"></span>
     </div>
   </div>
 </div>
