@@ -221,6 +221,10 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
 .qnote-inp:focus{border-color:var(--orange)}
 
 /* MOBILE */
+/* DELETED TAB */
+.del-row{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid #0d0d0d;transition:background .15s}
+.del-row:hover{background:rgba(239,68,68,.03)!important}
+.del-badge{font-size:10px;font-weight:800;background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.2);border-radius:20px;padding:2px 8px;margin-left:auto}
 @media(max-width:768px){
   .hacts .hb-g{display:none}
   .stats{grid-template-columns:repeat(3,1fr)}
@@ -305,6 +309,7 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
         <button class="tab on" onclick="stab('leads',this)">📋 Leads</button>
         <button class="tab" onclick="stab('clients',this)">🏆 Clients</button>
         <button class="tab" onclick="stab('dashboard',this)">📊 Dashboard</button>
+        <button class="tab" id="del-tab-btn" onclick="stab('deleted',this)">🗑 Deleted</button>
       </div>
     </div>
 
@@ -343,6 +348,7 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
 
     <div id="tab-clients" class="h"><div id="carea"></div></div>
     <div id="tab-dashboard" class="h"><div id="darea"></div></div>
+    <div id="tab-deleted" class="h"><div id="del-area"></div></div>
   </div>
 </div>
 
@@ -424,7 +430,7 @@ const TZ_MAP={
   'Washington':'America/Los_Angeles','Maryland':'America/New_York','Virginia':'America/New_York'
 };
 
-var leads=[],clients=[],who='',lpId=null,cvt=null,showAF=false;
+var leads=[],clients=[],deletedLeads=[],who='',lpId=null,cvt=null,showAF=false;
 var clockInterval=null;
 
 function ge(id){return document.getElementById(id);}
@@ -448,9 +454,9 @@ function saveLoc(){
       email:pem||l.email||''
     });
   });
-  localStorage.setItem('bdl-v11',JSON.stringify({leads:leads,clients:clients}));
+  localStorage.setItem('bdl-v11',JSON.stringify({leads:leads,clients:clients,deletedLeads:deletedLeads}));
 }
-function loadLoc(){try{var d=JSON.parse(localStorage.getItem('bdl-v11')||localStorage.getItem('bdl-v10')||'null');return d||{leads:null,clients:[]};}catch(e){return{leads:null,clients:[]};}}
+function loadLoc(){try{var d=JSON.parse(localStorage.getItem('bdl-v11')||localStorage.getItem('bdl-v10')||'null');return d||{leads:null,clients:[],deletedLeads:[]};}catch(e){return{leads:null,clients:[],deletedLeads:[]};}}
 function normLeads(arr){return arr.map(function(l){['followUpDate','lastContacted'].forEach(function(k){if(l[k])l[k]=fmtDate(l[k]);});
   // Recalculate followUpDate — always derive from last log or lastContacted + 4 biz days
   var refDate='';
@@ -557,7 +563,7 @@ function login(){
     } else if(localLeads.length>0){
       leads=localLeads;
     }
-    clients=data.clients||loc.clients||[];
+    clients=data.clients||loc.clients||[];deletedLeads=data.deletedLeads||loc.deletedLeads||[];
     saveLoc();
     // Auto-push leads that are ahead of Sheets back up (more logs OR updated followUpDate/lastContacted)
     var toSync=sheetLeads.filter(function(sl){
@@ -580,7 +586,7 @@ function login(){
       if(!usr||usr.password!==p){ge('load').classList.add('h');ge('login').classList.remove('h');e.textContent='Wrong username or password';e.classList.remove('h');return;}
       who=usr.name;
     } else {who=u;}
-    leads=loc.leads||[];clients=loc.clients||[];loadSenders();
+    leads=loc.leads||[];clients=loc.clients||[];deletedLeads=loc.deletedLeads||[];loadSenders();
     setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();loadTemplates();setTimeout(checkReminders,2000);},500);
   });
 }
@@ -643,8 +649,8 @@ function stopClock(){if(clockInterval)clearInterval(clockInterval);}
 function updateClocks(){if(lpId){var l=leads.find(function(x){return String(x.id)===String(lpId);});if(l)renderLpClocks(l);}}
 
 function initNF(){var s=ge('fni');if(s.options.length>1)return;NICHES.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;s.appendChild(o);});}
-function stab(n,btn){['leads','clients','dashboard'].forEach(function(t){ge('tab-'+t).classList.add('h');});document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});ge('tab-'+n).classList.remove('h');btn.classList.add('on');if(n==='clients')rc();if(n==='dashboard')rd();}
-function renderAll(){rs();ra();rl();renderDash();ge('lcount').textContent=leads.length+' leads · '+clients.length+' clients';}
+function stab(n,btn){['leads','clients','dashboard','deleted'].forEach(function(t){ge('tab-'+t).classList.add('h');});document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});ge('tab-'+n).classList.remove('h');btn.classList.add('on');if(n==='clients')rc();if(n==='dashboard')rd();if(n==='deleted')renderDeleted();}
+function renderAll(){rs();ra();rl();renderDash();ge('lcount').textContent=leads.length+' leads · '+clients.length+' clients'+(deletedLeads.length?' · 🗑 '+deletedLeads.length:'');updateDelTabBadge();}
 
 function rs(){
   var total=leads.length,w=leads.filter(function(l){return l.status==='Warm Lead';}).length,
@@ -1155,7 +1161,7 @@ function deleteLog(idx){
   saveLoc();renderLp();rl();var u=leads.find(function(x){return String(x.id)===String(lpId);});if(u)syncLead(u);
   flash('✓ Log entry deleted!');
 }
-function lpDel(){if(!confirm('Delete '+((leads.find(function(l){return String(l.id)===String(lpId);})||{}).company||'this lead')+'?'))return;var id=lpId;closeLp();leads=leads.filter(function(l){return String(l.id)!==String(id);});saveLoc();renderAll();flash('Deleted','bad');syncDelete(id);}
+function lpDel(){var l=leads.find(function(x){return String(x.id)===String(lpId);});if(!l)return;if(!confirm('Move "'+l.company+'" to Deleted? You can restore it anytime.'))return;var id=lpId;closeLp();deletedLeads.unshift(Object.assign({},l,{deletedDate:today()}));leads=leads.filter(function(x){return String(x.id)!==String(id);});saveLoc();renderAll();flash('Moved to 🗑 Deleted — tap tab to restore','bad');}
 
 // CONTACT MANAGEMENT
 function openAcModal(){
@@ -1397,6 +1403,75 @@ function copyForClaude(){
 }
 
 
+
+
+// ── DELETED LEADS ────────────────────────────────────
+function updateDelTabBadge(){
+  var btn=ge('del-tab-btn');if(!btn)return;
+  btn.textContent=deletedLeads.length?'🗑 Deleted ('+deletedLeads.length+')':'🗑 Deleted';
+}
+function renderDeleted(){
+  var da=ge('del-area');if(!da)return;
+  updateDelTabBadge();
+  if(!deletedLeads.length){
+    da.innerHTML='<div style="text-align:center;padding:70px 20px"><div style="font-size:52px;margin-bottom:14px">🗑</div><div style="color:#333;font-size:13px;font-weight:600">Trash is empty</div><div style="color:#222;font-size:12px;margin-top:6px">Deleted leads will appear here so you can restore them.</div></div>';
+    return;
+  }
+  var rows=deletedLeads.map(function(l,i){
+    var nc=({'Education':'#6366f1','Dental':'#14b8a6','Healthcare/Staffing':'#f87171','SaaS':'#8b5cf6','Finance/Lending':'#10b981','AI/Tech':'#a78bfa'})[l.niche]||'#475569';
+    var sc=({'Warm Lead':'#ff6a00','Sent':'#3b82f6','Pending':'#eab308','Bounced':'#ef4444','Replied':'#a855f7'})[l.status]||'#333';
+    var bg=i%2===0?'#000':'rgba(255,255,255,.013)';
+    return'<tr style="background:'+bg+';opacity:.7">'+
+      '<td style="color:#222;font-family:monospace;font-size:11px">'+l.num+'</td>'+
+      '<td style="font-weight:700;color:var(--text2)">'+esc(l.company)+'</td>'+
+      '<td style="color:#475569;font-size:12px">'+esc(l.contact||'—')+'</td>'+
+      '<td><span style="color:'+nc+';font-size:11px;font-weight:700">'+esc(l.niche||'—')+'</span></td>'+
+      '<td><span style="background:'+sc+';color:#fff;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">'+esc(l.status)+'</span></td>'+
+      '<td style="color:#333;font-size:11px;font-family:monospace">'+(l.deletedDate||'—')+'</td>'+
+      '<td><div style="display:flex;gap:4px">'+
+        '<button class="ab" style="background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2)" onclick="restoreLead(\''+l.id+'\')">↩ Restore</button>'+
+        '<button class="ab" style="background:rgba(239,68,68,.08);color:#fca5a5;border:1px solid rgba(239,68,68,.2)" onclick="permDelete(\''+l.id+'\')">✕ Forever</button>'+
+      '</div></td>'+
+    '</tr>';
+  }).join('');
+  da.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'+
+      '<div style="font-size:12px;color:#475569;font-weight:600">'+deletedLeads.length+' deleted lead'+(deletedLeads.length!==1?'s':'')+
+        ' &nbsp;<span style="color:#222;font-weight:400;font-size:11px">— Restore to bring back, or permanently delete</span></div>'+
+      '<button class="hb hb-g" style="color:#fca5a5;border-color:rgba(239,68,68,.2)" onclick="clearAllDeleted()">🗑 Empty Trash</button>'+
+    '</div>'+
+    '<div class="twrap"><table><thead><tr>'+
+      '<th>#</th><th>Company</th><th>Contact</th><th>Niche</th><th>Status</th><th>Deleted On</th><th>Actions</th>'+
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function restoreLead(id){
+  var l=deletedLeads.find(function(x){return String(x.id)===String(id);});
+  if(!l)return;
+  var restored=Object.assign({},l);
+  delete restored.deletedDate;
+  leads.push(restored);
+  deletedLeads=deletedLeads.filter(function(x){return String(x.id)!==String(id);});
+  saveLoc();renderDeleted();renderAll();
+  flash('✓ '+l.company+' restored!');
+  syncLead(restored);
+}
+function permDelete(id){
+  var l=deletedLeads.find(function(x){return String(x.id)===String(id);});
+  if(!l||!confirm('Permanently delete "'+l.company+'"? This cannot be undone.'))return;
+  deletedLeads=deletedLeads.filter(function(x){return String(x.id)!==String(id);});
+  saveLoc();renderDeleted();renderAll();
+  flash('Permanently deleted','bad');
+  syncDelete(id);
+}
+function clearAllDeleted(){
+  if(!deletedLeads.length)return;
+  if(!confirm('Permanently delete all '+deletedLeads.length+' leads in trash? Cannot be undone.'))return;
+  var ids=deletedLeads.map(function(l){return l.id;});
+  deletedLeads=[];
+  saveLoc();renderDeleted();renderAll();
+  ids.forEach(function(id,i){setTimeout(function(){syncDelete(id);},i*100);});
+  flash('Trash emptied','bad');
+}
 
 // ── EXPORT CSV ──────────────────────────────────────
 function exportCSV(){
