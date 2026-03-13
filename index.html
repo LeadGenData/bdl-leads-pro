@@ -294,6 +294,7 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
         <button class="tab on" onclick="stab('leads',this)">📋 Leads</button>
         <button class="tab" onclick="stab('clients',this)">🏆 Clients</button>
         <button class="tab" onclick="stab('dashboard',this)">📊 Dashboard</button>
+        <button class="tab" id="del-tab-btn" onclick="stab('deleted',this)">Deleted</button>
       </div>
     </div>
 
@@ -308,7 +309,7 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
           <option value="All">All Status</option>
           <option>Pending</option><option>Sent</option><option>Warm Lead</option><option>Bounced</option><option>Replied</option>
         </select>
-        <select id="fni" onchange="rl()"><option value="All">All Niches</option></select>
+        <input id="fni" list="niche-list" placeholder="All Niches" oninput="rl()" style="background:#111;border:1px solid #1f1f1f;border-radius:var(--rx);padding:7px 11px;color:var(--text);outline:none;width:120px">
         <select id="fpri" onchange="rl()">
           <option value="">All Leads</option>
           <option value="overdue">🔥 Overdue</option>
@@ -335,6 +336,7 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
 
     <div id="tab-clients" class="h"><div id="carea"></div></div>
     <div id="tab-dashboard" class="h"><div id="darea"></div></div>
+    <div id="tab-deleted" class="h"><div id="del-area"></div></div>
   </div>
 </div>
 
@@ -372,7 +374,7 @@ tbody tr:hover{background:rgba(255,106,0,.03)!important}
 const SHEET_URL='https://script.google.com/macros/s/AKfycbxE1FoKS3Jw8cxGMfEuX7OCdDIehs5YDbQxPMWQ-47wvwJe0W40syMKOK7E1ClY2UQ/exec';
 const USERS={skinner:{password:'bdl123',name:'Skinner Donald'},friend:{password:'bdl456',name:'My Friend'}};
 const SC={'Warm Lead':'#ff6a00','Sent':'#3b82f6','Pending':'#eab308','Bounced':'#ef4444','Replied':'#a855f7'};
-const NC={'Education':'#6366f1','Dental':'#14b8a6','HR/Dental':'#06b6d4','Community':'#ff6a00','Motivational':'#ec4899','Healthcare/Staffing':'#f87171','Healthcare/Senior Living':'#fb7185','Healthcare/SaaS':'#f43f5e','SaaS':'#8b5cf6','Software/SaaS':'#38bdf8','Real Estate/PropTech':'#f59e0b','Hospitality/Events':'#84cc16','ERP/IT Consulting':'#34d399','Finance/Lending':'#10b981','AI/Tech':'#a78bfa'};
+const NC={'Junk Removal':'#f97316','Property Services':'#fb923c','Education':'#6366f1','Dental':'#14b8a6','HR/Dental':'#06b6d4','Community':'#ff6a00','Motivational':'#ec4899','Healthcare/Staffing':'#f87171','Healthcare/Senior Living':'#fb7185','Healthcare/SaaS':'#f43f5e','SaaS':'#8b5cf6','Software/SaaS':'#38bdf8','Real Estate/PropTech':'#f59e0b','Hospitality/Events':'#84cc16','ERP/IT Consulting':'#34d399','Finance/Lending':'#10b981','AI/Tech':'#a78bfa'};
 const STATUSES=['Pending','Sent','Warm Lead','Bounced','Replied'];
 const DEAL_STAGES=['Prospecting','Contacted','Sample Sent','Negotiating','Closed Won','Closed Lost'];
 const DS_COLORS={'Prospecting':'#475569','Contacted':'#3b82f6','Sample Sent':'#eab308','Negotiating':'#ff6a00','Closed Won':'#22c55e','Closed Lost':'#ef4444'};
@@ -416,7 +418,7 @@ const TZ_MAP={
   'Washington':'America/Los_Angeles','Maryland':'America/New_York','Virginia':'America/New_York'
 };
 
-var leads=[],clients=[],who='',lpId=null,cvt=null,showAF=false;
+var leads=[],clients=[],deletedLeads=[],who='',lpId=null,cvt=null,showAF=false;
 var clockInterval=null;
 
 function ge(id){return document.getElementById(id);}
@@ -440,9 +442,9 @@ function saveLoc(){
       email:pem||l.email||''
     });
   });
-  localStorage.setItem('bdl-v11',JSON.stringify({leads:leads,clients:clients}));
+  localStorage.setItem('bdl-v11',JSON.stringify({leads:leads,clients:clients,deletedLeads:deletedLeads}));
 }
-function loadLoc(){try{var d=JSON.parse(localStorage.getItem('bdl-v11')||localStorage.getItem('bdl-v10')||'null');return d||{leads:null,clients:[]};}catch(e){return{leads:null,clients:[]};}}
+function loadLoc(){try{var d=JSON.parse(localStorage.getItem('bdl-v11')||localStorage.getItem('bdl-v10')||'null');return d||{leads:null,clients:[],deletedLeads:[]};}catch(e){return{leads:null,clients:[],deletedLeads:[]};}}
 function normLeads(arr){return arr.map(function(l){['followUpDate','lastContacted'].forEach(function(k){if(l[k])l[k]=fmtDate(l[k]);});
   // Recalculate followUpDate — always derive from last log or lastContacted + 4 biz days
   var refDate='';
@@ -549,7 +551,7 @@ function login(){
     } else if(localLeads.length>0){
       leads=localLeads;
     }
-    clients=data.clients||loc.clients||[];
+    clients=data.clients||loc.clients||[];deletedLeads=data.deletedLeads||loc.deletedLeads||[];
     saveLoc();
     // Auto-push leads that are ahead of Sheets back up (more logs OR updated followUpDate/lastContacted)
     var toSync=sheetLeads.filter(function(sl){
@@ -572,7 +574,7 @@ function login(){
       if(!usr||usr.password!==p){ge('load').classList.add('h');ge('login').classList.remove('h');e.textContent='Wrong username or password';e.classList.remove('h');return;}
       who=usr.name;
     } else {who=u;}
-    leads=loc.leads||[];clients=loc.clients||[];loadSenders();
+    leads=loc.leads||[];clients=loc.clients||[];deletedLeads=loc.deletedLeads||[];loadSenders();
     setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();setTimeout(checkReminders,2000);},500);
   });
 }
@@ -634,9 +636,9 @@ function startClock(){stopClock();clockInterval=setInterval(updateClocks,30000);
 function stopClock(){if(clockInterval)clearInterval(clockInterval);}
 function updateClocks(){if(lpId){var l=leads.find(function(x){return String(x.id)===String(lpId);});if(l)renderLpClocks(l);}}
 
-function initNF(){var s=ge('fni');if(s.options.length>1)return;NICHES.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;s.appendChild(o);});}
-function stab(n,btn){['leads','clients','dashboard'].forEach(function(t){ge('tab-'+t).classList.add('h');});document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});ge('tab-'+n).classList.remove('h');btn.classList.add('on');if(n==='clients')rc();if(n==='dashboard')rd();}
-function renderAll(){rs();ra();rl();renderDash();ge('lcount').textContent=leads.length+' leads · '+clients.length+' clients';}
+function initNF(){/* niche filter is now a free-text input; datalist populated by populateNicheList() */}
+function stab(n,btn){['leads','clients','dashboard','deleted'].forEach(function(t){ge('tab-'+t).classList.add('h');});document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});ge('tab-'+n).classList.remove('h');btn.classList.add('on');if(n==='clients')rc();if(n==='dashboard')rd();if(n==='deleted')renderDeleted();}
+function renderAll(){if(!deletedLeads)deletedLeads=[];rs();ra();rl();renderDash();populateNicheList();ge('lcount').textContent=leads.length+' leads · '+clients.length+' clients'+(deletedLeads.length?' - Deleted:'+deletedLeads.length:'');updateDelTabBadge();}
 
 function rs(){
   var total=leads.length,w=leads.filter(function(l){return l.status==='Warm Lead';}).length,
@@ -730,7 +732,7 @@ function gf(){
   return leads.filter(function(l){
     if(q&&l.company.toLowerCase().indexOf(q)<0&&l.contact.toLowerCase().indexOf(q)<0&&String(l.num).indexOf(q)<0)return false;
     if(fs!=='All'&&l.status!==fs)return false;
-    if(fn!=='All'&&l.niche!==fn)return false;
+    if(fn&&fn.trim()&&fn!=='All'&&(!l.niche||l.niche.toLowerCase().indexOf(fn.toLowerCase())<0))return false;
     if(fp==='overdue'&&!(l.followUpDate&&l.followUpDate<t&&['Bounced','Replied'].indexOf(l.status)<0))return false;
     if(fp==='today'&&!(l.followUpDate===t&&['Bounced','Replied'].indexOf(l.status)<0))return false;
     var pri=ge('fpri')?ge('fpri').value:'';
@@ -760,7 +762,7 @@ function togaf(){
         '<div class="ef"><label>Email</label><input id="ne" placeholder="email@co.com"></div>'+
         '<div class="ef"><label>City</label><input id="ncity" placeholder="e.g. Chicago"></div>'+
         '<div class="ef"><label>State</label><input id="nstate" placeholder="e.g. IL"></div>'+
-        '<div class="ef"><label>Niche</label><select id="nn">'+NICHES.map(function(n){return'<option>'+esc(n)+'</option>';}).join('')+'</select></div>'+
+        '<div class="ef"><label>Niche</label><input id="nn" list="niche-list" placeholder="Type or select..." style="background:#111;border:1px solid #1e293b;border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:12px;width:100%;box-sizing:border-box;outline:none"></div>'+
         '<div class="ef"><label>Status</label><select id="ns">'+STATUSES.map(function(s){return'<option>'+s+'</option>';}).join('')+'</select></div>'+
         '<div class="ef"><label>DM?</label><select id="nd"><option value="">Unknown</option><option>Yes</option><option>No</option></select></div>'+
         '<div class="ef"><label>Notes</label><input id="nt" placeholder="Notes…"></div>'+
@@ -991,7 +993,7 @@ function renderLp(){
     '<div class="lp-sec"><h3>📅 Pipeline & Deal</h3>'+
       '<div class="lp-grid">'+
         '<div class="lp-f"><label>Status</label><select id="lp-st">'+opts+'</select></div>'+
-        '<div class="lp-f"><label>Niche</label><select id="lp-ni">'+nicopts+'</select></div>'+
+        '<div class="lp-f"><label>Niche</label><input id="lp-ni" list="niche-list" value="'+esc(l.niche||'')+'" placeholder="Type or select..." style="background:#111;border:1px solid #1e293b;border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:12px;width:100%;box-sizing:border-box;outline:none"></div>'+
         '<div class="lp-f"><label>Deal Stage</label><select id="lp-ds">'+DEAL_STAGES.map(function(s){return'<option'+(s===(l.dealStage||'Contacted')?' selected':'')+'>'+esc(s)+'</option>';}).join('')+'</select></div>'+
         '<div class="lp-f"><label>Expected Value ($)</label><input id="lp-dv" type="number" placeholder="e.g. 147" value="'+esc(l.dealValue||'')+'"></div>'+
         '<div class="lp-f"><label>Last Contacted</label><input type="date" id="lp-lc" value="'+esc(l.lastContacted||'')+'" oninput="lcChanged(this.value)" onchange="lcChanged(this.value)"></div>'+
@@ -1163,7 +1165,7 @@ function deleteLog(idx){
   saveLoc();renderLp();rl();var u=leads.find(function(x){return String(x.id)===String(lpId);});if(u)syncLead(u);
   flash('✓ Log entry deleted!');
 }
-function lpDel(){if(!confirm('Delete '+((leads.find(function(l){return String(l.id)===String(lpId);})||{}).company||'this lead')+'?'))return;var id=lpId;closeLp();leads=leads.filter(function(l){return String(l.id)!==String(id);});saveLoc();renderAll();flash('Deleted','bad');syncDelete(id);}
+function lpDel(){var l=leads.find(function(x){return String(x.id)===String(lpId);});if(!l)return;if(!confirm('Move "'+l.company+'" to Deleted? You can restore it anytime.'))return;var id=lpId;closeLp();deletedLeads.unshift(Object.assign({},l,{deletedDate:today()}));leads=leads.filter(function(x){return String(x.id)!==String(id);});saveLoc();renderAll();flash('Moved to Deleted','bad');}
 
 // CONTACT MANAGEMENT
 function openAcModal(){
@@ -1619,6 +1621,81 @@ function runQuickImport(){
   var msg='✓ Added '+imported+' lead'+(imported!==1?'s':'');
   if(dupes)msg+=' · '+dupes+' already in tracker';
   flash(msg);
+}
+
+// ── NICHE DATALIST ───────────────────────────────────
+function populateNicheList(){
+  var dl=document.getElementById('niche-list');if(!dl)return;
+  var all=NICHES.slice();
+  leads.forEach(function(l){if(l.niche&&all.indexOf(l.niche)<0)all.push(l.niche);});
+  dl.innerHTML=all.map(function(n){return'<option value="'+n+'"></option>';}).join('');
+}
+
+
+// -- DELETED LEADS --
+function updateDelTabBadge(){
+  if(!deletedLeads)deletedLeads=[];
+  var btn=ge('del-tab-btn');if(!btn)return;
+  btn.textContent=deletedLeads.length?'Deleted ('+deletedLeads.length+')':'Deleted';
+}
+function renderDeleted(){
+  if(!deletedLeads)deletedLeads=[];
+  var da=ge('del-area');if(!da)return;
+  updateDelTabBadge();
+  if(!deletedLeads.length){
+    da.innerHTML='<div style="text-align:center;padding:70px 20px"><div style="font-size:52px;margin-bottom:14px">&#128465;</div><div style="color:#333;font-size:13px;font-weight:600">Trash is empty</div><div style="color:#222;font-size:12px;margin-top:6px">Deleted leads appear here for recovery.</div></div>';
+    return;
+  }
+  var rows=deletedLeads.map(function(l,i){
+    var nc=NC[l.niche]||'#475569';
+    var sc=({'Warm Lead':'#ff6a00','Sent':'#3b82f6','Pending':'#eab308','Bounced':'#ef4444','Replied':'#a855f7'})[l.status]||'#333';
+    var bg=i%2===0?'#000':'rgba(255,255,255,.013)';
+    return '<tr style="background:'+bg+';opacity:.7">'+
+      '<td style="color:#222;font-family:monospace;font-size:11px">'+l.num+'</td>'+
+      '<td style="font-weight:700;color:var(--text2)">'+esc(l.company)+'</td>'+
+      '<td style="color:#475569;font-size:12px">'+esc(l.contact||'-')+'</td>'+
+      '<td><span style="color:'+nc+';font-size:11px;font-weight:700">'+esc(l.niche||'-')+'</span></td>'+
+      '<td><span style="background:'+sc+';color:#fff;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">'+esc(l.status)+'</span></td>'+
+      '<td style="color:#333;font-size:11px;font-family:monospace">'+(l.deletedDate||'-')+'</td>'+
+      '<td><div style="display:flex;gap:4px">'+
+        '<button class="ab" style="background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2)" onclick="restoreLead(\''+l.id+'\')">&crarr; Restore</button>'+
+        '<button class="ab" style="background:rgba(239,68,68,.08);color:#fca5a5;border:1px solid rgba(239,68,68,.2)" onclick="permDelete(\''+l.id+'\')">&times; Forever</button>'+
+      '</div></td>'+
+    '</tr>';
+  }).join('');
+  da.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'+
+      '<div style="font-size:12px;color:#475569;font-weight:600">'+deletedLeads.length+' deleted lead'+(deletedLeads.length!==1?'s':'')+' - Restore or permanently delete</div>'+
+      '<button class="hb hb-g" style="color:#fca5a5;border-color:rgba(239,68,68,.2)" onclick="clearAllDeleted()">Empty Trash</button>'+
+    '</div>'+
+    '<div class="twrap"><table><thead><tr>'+
+      '<th>#</th><th>Company</th><th>Contact</th><th>Niche</th><th>Status</th><th>Deleted On</th><th>Actions</th>'+
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function restoreLead(id){
+  var l=deletedLeads.find(function(x){return String(x.id)===String(id);});
+  if(!l)return;
+  var restored=Object.assign({},l);delete restored.deletedDate;
+  leads.push(restored);
+  deletedLeads=deletedLeads.filter(function(x){return String(x.id)!==String(id);});
+  saveLoc();renderDeleted();renderAll();
+  flash('Restored: '+l.company);syncLead(restored);
+}
+function permDelete(id){
+  var l=deletedLeads.find(function(x){return String(x.id)===String(id);});
+  if(!l||!confirm('Permanently delete "'+l.company+'"? Cannot be undone.'))return;
+  deletedLeads=deletedLeads.filter(function(x){return String(x.id)!==String(id);});
+  saveLoc();renderDeleted();renderAll();
+  flash('Permanently deleted','bad');syncDelete(id);
+}
+function clearAllDeleted(){
+  if(!deletedLeads.length)return;
+  if(!confirm('Permanently delete all '+deletedLeads.length+' leads in trash? Cannot be undone.'))return;
+  var ids=deletedLeads.map(function(l){return l.id;});
+  deletedLeads=[];
+  saveLoc();renderDeleted();renderAll();
+  ids.forEach(function(id,i){setTimeout(function(){syncDelete(id);},i*100);});
+  flash('Trash emptied','bad');
 }
 
 // ── EXPORT CSV ──────────────────────────────────────
@@ -2107,17 +2184,7 @@ function saveNewContact(){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
         <div>
           <label style="font-size:11px;color:#475569;font-weight:700;display:block;margin-bottom:5px">NICHE (optional)</label>
-          <select id="qi-niche" style="width:100%;background:#111;border:1px solid #1e293b;border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:12px;outline:none">
-            <option value="">— Unknown —</option>
-            <option>Education</option>
-            <option>Dental</option>
-            <option>Healthcare/Staffing</option>
-            <option>SaaS</option>
-            <option>Finance/Lending</option>
-            <option>AI/Tech</option>
-            <option>Real Estate</option>
-            <option>Other</option>
-          </select>
+          <input id="qi-niche" list="niche-list" placeholder="Type or select..." style="width:100%;background:#111;border:1px solid #1e293b;border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:12px;outline:none;box-sizing:border-box">
         </div>
         <div>
           <label style="font-size:11px;color:#475569;font-weight:700;display:block;margin-bottom:5px">SENDER</label>
@@ -2138,5 +2205,6 @@ function saveNewContact(){
     </div>
   </div>
 </div>
+<datalist id="niche-list"></datalist>
 </body>
 </html>
