@@ -1804,18 +1804,27 @@ function toggleAI(){
   p.style.display=isHidden?'flex':'none';
   if(isHidden){
     var saved=localStorage.getItem('bdl-gemini-key');
-    if(saved){ge('ai-key').value=saved;ge('ai-key-bar').style.display='none';}
-    else{ge('ai-key-bar').style.display='flex';}
+    if(saved){ge('ai-key').value=saved;ge('ai-key-bar').style.display='none';ge('ai-change-key-bar').style.display='flex';}
+    else{ge('ai-key-bar').style.display='flex';ge('ai-change-key-bar').style.display='none';}
     var chat=ge('ai-chat');
     if(!chat.innerHTML)aiMsg('sys','Hi! Tell me about a lead in plain English.\n\nExamples:\n"Sent email to Kyle at Alpha Dog, dental, Skinner"\n"Jordan at smrtPhone replied, warm lead, Dan sender"\n"Log follow-up for Dumpster D, Matthew sent, follow up 3/17"');
   }
 }
 
+function changeAIKey(){
+  localStorage.removeItem('bdl-gemini-key');
+  ge('ai-key').value='';
+  ge('ai-key-bar').style.display='flex';
+  ge('ai-change-key-bar').style.display='none';
+  ge('ai-key').focus();
+  aiMsg('sys','Key cleared. Paste your new Gemini API key above.');
+}
 function saveAIKey(){
   var k=ge('ai-key').value.trim();
   if(!k){alert('Paste your Gemini API key first');return;}
   localStorage.setItem('bdl-gemini-key',k);
   ge('ai-key-bar').style.display='none';
+  ge('ai-change-key-bar').style.display='flex';
   aiMsg('sys','API key saved! Ready to go.');
 }
 
@@ -1854,7 +1863,7 @@ function sendAI(){
 
   var systemPrompt='You are a CRM assistant. Convert the user message into a JSON lead. Return ONLY valid JSON, no markdown.\n\nFields required:\nid: "'+nextId+'"\nnum: '+nextNum+'\ncompany: string\ncontact: string (or "Unknown")\nemail: string (or "")\ntitle: string (or "")\nniche: string (Dental, Education, SaaS, Healthcare/Staffing, Real Estate/PropTech, Junk Removal, Property Services, AI/Tech, Finance/Lending, Hospitality/Events, or best guess)\nstatus: one of: Pending, Sent, Warm Lead, Bounced, Replied\ndecisionMaker: "Yes", "No", or ""\ncity: string or ""\nstate: 2-letter or ""\ntimezone: "ET","CT","MT","PT" or ""\nfollowUpDate: YYYY-MM-DD (4-5 business days from '+t+' unless specified)\nlastContacted: "'+t+'"\nlastSender: best match from ['+senderList+'] or ""\nfollowUpCount: 1\npitchSent: ""\npainPoints: ""\nservicesNeeded: ""\nnotes: any extra info\noutreachLog: [{\"date\":\"'+t+'\",\"note\":\"[what happened]\",\"sender\":\"[sender email]\"}]\ndealStage: "Contacted"\ndealValue: ""\ncontacts: [{\"id\":\"c_'+t+'\",\"name\":\"[contact]\",\"email\":\"[email]\",\"title\":\"\",\"priority\":\"Primary\",\"status\":\"Active\"}]\n\nToday is '+t+'.';
 
-  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+key,{
+  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key='+key,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
@@ -2852,6 +2861,7 @@ function saveNewContact(){
     </div>
     <button onclick="toggleAI()" style="background:none;border:none;color:#475569;cursor:pointer;font-size:18px;padding:0">✕</button>
   </div>
+  <div id="ai-change-key-bar" style="display:none;padding:6px 14px;border-bottom:1px solid #1e293b;align-items:center;justify-content:space-between"><span style="font-size:11px;color:#334155">API key saved</span><button onclick="changeAIKey()" style="background:rgba(239,68,68,.08);color:#fca5a5;border:1px solid rgba(239,68,68,.2);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer">&#128274; Change Key</button></div>
   <div id="ai-key-bar" style="padding:10px 14px;border-bottom:1px solid #1e293b;display:flex;gap:8px;align-items:center">
     <input id="ai-key" type="password" placeholder="Paste Gemini API key…" style="flex:1;background:#111;border:1px solid #1e293b;border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:11px;outline:none">
     <button onclick="saveAIKey()" style="background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.3);border-radius:7px;padding:7px 12px;font-size:11px;cursor:pointer;white-space:nowrap">Save Key</button>
