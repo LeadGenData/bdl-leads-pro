@@ -1863,7 +1863,7 @@ function sendAI(){
 
   var systemPrompt='You are a CRM assistant. Convert the user message into a JSON lead. Return ONLY valid JSON, no markdown.\n\nFields required:\nid: "'+nextId+'"\nnum: '+nextNum+'\ncompany: string\ncontact: string (or "Unknown")\nemail: string (or "")\ntitle: string (or "")\nniche: string (Dental, Education, SaaS, Healthcare/Staffing, Real Estate/PropTech, Junk Removal, Property Services, AI/Tech, Finance/Lending, Hospitality/Events, or best guess)\nstatus: one of: Pending, Sent, Warm Lead, Bounced, Replied\ndecisionMaker: "Yes", "No", or ""\ncity: string or ""\nstate: 2-letter or ""\ntimezone: "ET","CT","MT","PT" or ""\nfollowUpDate: YYYY-MM-DD (4-5 business days from '+t+' unless specified)\nlastContacted: "'+t+'"\nlastSender: best match from ['+senderList+'] or ""\nfollowUpCount: 1\npitchSent: ""\npainPoints: ""\nservicesNeeded: ""\nnotes: any extra info\noutreachLog: [{\"date\":\"'+t+'\",\"note\":\"[what happened]\",\"sender\":\"[sender email]\"}]\ndealStage: "Contacted"\ndealValue: ""\ncontacts: [{\"id\":\"c_'+t+'\",\"name\":\"[contact]\",\"email\":\"[email]\",\"title\":\"\",\"priority\":\"Primary\",\"status\":\"Active\"}]\n\nToday is '+t+'.';
 
-  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key='+key,{
+  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+key,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
