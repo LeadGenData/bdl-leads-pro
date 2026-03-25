@@ -373,7 +373,52 @@ tbody tr:hover{background:rgba(255,106,0,.04)!important;transform:translateX(2px
 /* ══════════════════════════════════════════════════════ */
 
 @media(max-width:768px){
+  /* Layout */
   .hacts .hb-g{display:none}
+  #mobile-reload-bar{display:flex!important}
+  .main{padding:8px 10px}
+  #larea{padding-bottom:80px}
+  #alerts{padding-bottom:4px}
+
+  /* Stats cards — 2 per row */
+  .stats{grid-template-columns:repeat(2,1fr);gap:8px}
+  .sc-val{font-size:20px}
+  .sc-body{padding:10px 12px 8px}
+
+  /* Lead panel full screen */
+  #app.lp{margin-right:0}
+  #lp{width:100vw;right:-100vw;border-radius:0}
+
+  /* Table — hide less important cols */
+  th:nth-child(6),th:nth-child(7),th:nth-child(8),th:nth-child(10),
+  td:nth-child(6),td:nth-child(7),td:nth-child(8),td:nth-child(10){display:none}
+  .ab:not(:first-child):not(:nth-child(2)){display:none}
+
+  /* Tabs — scrollable */
+  .tabs{overflow-x:auto;width:100%;border-radius:8px}
+  .tabs-row{overflow-x:auto}
+  .tab{white-space:nowrap;font-size:11px;padding:6px 12px}
+
+  /* Filters — stack */
+  .filters{flex-wrap:wrap;gap:6px}
+  .filters input,.filters select{font-size:12px;padding:6px 8px}
+  #srch{width:100%;flex:1 1 100%}
+
+  /* Toolbar */
+  .hacts{gap:4px;flex-wrap:wrap}
+  .hb{font-size:11px;padding:5px 8px}
+
+  /* Lead panel footer */
+  .lp-foot{gap:6px}
+  .lp-save{font-size:11px;padding:8px}
+  .lp-del{font-size:11px;padding:8px}
+
+  /* Action plan */
+  #alerts>div>div{flex-wrap:wrap}
+
+  /* Dashboard cards */
+  .dcards{grid-template-columns:repeat(2,1fr)}
+}
   #mobile-reload-bar{display:flex!important}
   #larea{padding-bottom:70px}
   #alerts{padding-bottom:4px}
@@ -528,7 +573,8 @@ tbody tr:hover{background:rgba(255,106,0,.04)!important;transform:translateX(2px
   <div class="lp-foot">
     <button class="lp-fu-btn" onclick="lpFU()">+1 Follow-up</button>
     <button class="lp-save" onclick="lpSave()">💾 Save Changes</button>
-    <button class="lp-del" onclick="lpDel()">🗑</button>
+    <button class="lp-del" onclick="lpDel()" title="Delete">🗑</button>
+    <button class="lp-del" style="background:rgba(100,116,139,.08);color:#64748b;border-color:rgba(100,116,139,.2)" onclick="lpArchive()" title="Archive">📂</button>
   </div>
 </div>
 
@@ -547,7 +593,7 @@ tbody tr:hover{background:rgba(255,106,0,.04)!important;transform:translateX(2px
 
 <script>
 const SHEET_URL='https://script.google.com/macros/s/AKfycbxE1FoKS3Jw8cxGMfEuX7OCdDIehs5YDbQxPMWQ-47wvwJe0W40syMKOK7E1ClY2UQ/exec';
-const USERS={skinner:{password:'bdl123',name:'Skinner Donald'},friend:{password:'bdl456',name:'My Friend'}};
+// Credentials validated server-side via Google Sheets
 const SC={'Warm Lead':'#ff6a00','Sent':'#3b82f6','Pending':'#eab308','Bounced':'#ef4444','Replied':'#a855f7'};
 const NC={'Junk Removal':'#f97316','Property Services':'#fb923c','Education':'#6366f1','Dental':'#14b8a6','HR/Dental':'#06b6d4','Community':'#ff6a00','Motivational':'#ec4899','Healthcare/Staffing':'#f87171','Healthcare/Senior Living':'#fb7185','Healthcare/SaaS':'#f43f5e','SaaS':'#8b5cf6','Software/SaaS':'#38bdf8','Real Estate/PropTech':'#f59e0b','Hospitality/Events':'#84cc16','ERP/IT Consulting':'#34d399','Finance/Lending':'#10b981','AI/Tech':'#a78bfa'};
 const STATUSES=['Pending','Sent','Warm Lead','Bounced','Replied'];
@@ -745,9 +791,8 @@ function login(){
     ge('ltxt').textContent='Sheets offline, loading local data…';
     var loc=loadLoc();
     if(loc.users){
-      var usr=loc.users[u];
-      if(!usr||usr.password!==p){ge('load').classList.add('h');ge('login').classList.remove('h');e.textContent='Wrong username or password';e.classList.remove('h');return;}
-      who=usr.name;
+      // Offline fallback — just use username
+      who=u;
     } else {who=u;}
     leads=loc.leads||[];clients=loc.clients||[];deletedLeads=loc.deletedLeads||[];archivedLeads=loc.archivedLeads||[];loadSenders();
     setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();setTimeout(checkReminders,2000);},500);
