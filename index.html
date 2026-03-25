@@ -374,6 +374,9 @@ tbody tr:hover{background:rgba(255,106,0,.04)!important;transform:translateX(2px
 
 @media(max-width:768px){
   .hacts .hb-g{display:none}
+  #mobile-reload-bar{display:flex!important}
+  #larea{padding-bottom:70px}
+  #alerts{padding-bottom:4px}
   .stats{grid-template-columns:repeat(3,1fr)}
   #app.lp{margin-right:0}
   #lp{width:100vw;right:-100vw}
@@ -465,6 +468,7 @@ tbody tr:hover{background:rgba(255,106,0,.04)!important;transform:translateX(2px
         <button class="tab" onclick="stab('clients',this)">🏆 Clients</button>
         <button class="tab" onclick="stab('dashboard',this)">📊 Dashboard</button>
         <button class="tab" id="del-tab-btn" onclick="stab('deleted',this)">Deleted</button>
+        <button class="tab" id="arc-tab-btn" onclick="stab('archived',this)">&#128190; Archived</button>
       </div>
     </div>
 
@@ -507,6 +511,7 @@ tbody tr:hover{background:rgba(255,106,0,.04)!important;transform:translateX(2px
     <div id="tab-clients" class="h"><div id="carea"></div></div>
     <div id="tab-dashboard" class="h"><div id="darea"></div></div>
     <div id="tab-deleted" class="h"><div id="del-area"></div></div>
+    <div id="tab-archived" class="h"><div id="arc-area"></div></div>
   </div>
 </div>
 
@@ -588,7 +593,7 @@ const TZ_MAP={
   'Washington':'America/Los_Angeles','Maryland':'America/New_York','Virginia':'America/New_York'
 };
 
-var leads=[],clients=[],deletedLeads=[],who='',lpId=null,cvt=null,showAF=false;
+var leads=[],clients=[],deletedLeads=[],archivedLeads=[],who='',lpId=null,cvt=null,showAF=false;
 var clockInterval=null;
 
 function ge(id){return document.getElementById(id);}
@@ -612,9 +617,9 @@ function saveLoc(){
       email:pem||l.email||''
     });
   });
-  localStorage.setItem('bdl-v11',JSON.stringify({leads:leads,clients:clients,deletedLeads:deletedLeads}));
+  localStorage.setItem('bdl-v11',JSON.stringify({leads:leads,clients:clients,deletedLeads:deletedLeads,archivedLeads:archivedLeads}));
 }
-function loadLoc(){try{var d=JSON.parse(localStorage.getItem('bdl-v11')||localStorage.getItem('bdl-v10')||'null');return d||{leads:null,clients:[],deletedLeads:[]};}catch(e){return{leads:null,clients:[],deletedLeads:[]};}}
+function loadLoc(){try{var d=JSON.parse(localStorage.getItem('bdl-v11')||localStorage.getItem('bdl-v10')||'null');return d||{leads:null,clients:[],deletedLeads:[],archivedLeads:[]};}catch(e){return{leads:null,clients:[],deletedLeads:[],archivedLeads:[]};}}
 function normLeads(arr){return arr.map(function(l){['followUpDate','lastContacted'].forEach(function(k){if(l[k])l[k]=fmtDate(l[k]);});
   // Recalculate followUpDate — always derive from last log or lastContacted + 4 biz days
   var refDate='';
@@ -721,7 +726,7 @@ function login(){
     } else if(localLeads.length>0){
       leads=localLeads;
     }
-    clients=data.clients||loc.clients||[];deletedLeads=data.deletedLeads||loc.deletedLeads||[];
+    clients=data.clients||loc.clients||[];deletedLeads=data.deletedLeads||loc.deletedLeads||[];archivedLeads=data.archivedLeads||loc.archivedLeads||[];
     saveLoc();
     // Auto-push leads that are ahead of Sheets back up (more logs OR updated followUpDate/lastContacted)
     var toSync=sheetLeads.filter(function(sl){
@@ -744,7 +749,7 @@ function login(){
       if(!usr||usr.password!==p){ge('load').classList.add('h');ge('login').classList.remove('h');e.textContent='Wrong username or password';e.classList.remove('h');return;}
       who=usr.name;
     } else {who=u;}
-    leads=loc.leads||[];clients=loc.clients||[];deletedLeads=loc.deletedLeads||[];loadSenders();
+    leads=loc.leads||[];clients=loc.clients||[];deletedLeads=loc.deletedLeads||[];archivedLeads=loc.archivedLeads||[];loadSenders();
     setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();setTimeout(checkReminders,2000);},500);
   });
 }
@@ -807,8 +812,8 @@ function stopClock(){if(clockInterval)clearInterval(clockInterval);}
 function updateClocks(){if(lpId){var l=leads.find(function(x){return String(x.id)===String(lpId);});if(l)renderLpClocks(l);}}
 
 function initNF(){/* niche filter is now a free-text input; datalist populated by populateNicheList() */}
-function stab(n,btn){['leads','clients','dashboard','deleted'].forEach(function(t){ge('tab-'+t).classList.add('h');});document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});var el=ge('tab-'+n);el.classList.remove('h');el.style.animation='none';requestAnimationFrame(function(){el.style.animation='';});btn.classList.add('on');if(n==='clients')rc();if(n==='dashboard')rd();if(n==='deleted')renderDeleted();}
-function renderAll(){if(!deletedLeads)deletedLeads=[];rs();ra();rl();renderDash();populateNicheList();ge('lcount').textContent=leads.length+' leads · '+clients.length+' clients'+(deletedLeads.length?' - Deleted:'+deletedLeads.length:'');updateDelTabBadge();}
+function stab(n,btn){['leads','clients','dashboard','deleted','archived'].forEach(function(t){ge('tab-'+t).classList.add('h');});document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});var el=ge('tab-'+n);el.classList.remove('h');el.style.animation='none';requestAnimationFrame(function(){el.style.animation='';});btn.classList.add('on');if(n==='clients')rc();if(n==='dashboard')rd();if(n==='deleted')renderDeleted();if(n==='archived')renderArchived();}
+function renderAll(){if(!deletedLeads)deletedLeads=[];rs();ra();rl();renderDash();populateNicheList();if(!archivedLeads)archivedLeads=[];ge('lcount').textContent=leads.length+' leads · '+clients.length+' clients'+(deletedLeads.length?' - Deleted:'+deletedLeads.length:'')+(archivedLeads.length?' - Archived:'+archivedLeads.length:'');updateDelTabBadge();updateArchiveTabBadge();}
 
 function rs(){
   var total=leads.length,w=leads.filter(function(l){return l.status==='Warm Lead';}).length,
@@ -1189,7 +1194,9 @@ function renderLp(){
       '</div>'+
       '<div style="display:flex;gap:7px">'+
         '<input id="lp-log-inp" style="flex:1;background:#111;border:1px solid #1f1f1f;border-radius:6px;padding:7px 9px;color:var(--text);font-size:12px;outline:none" placeholder="Add note… Enter to save" onkeydown="if(event.key===\'Enter\')lpAddLog()">'+
-        '<button style="background:var(--orange);color:#fff;border:none;border-radius:6px;padding:7px 13px;font-size:12px;cursor:pointer;font-weight:700" onclick="lpAddLog()">+ Log</button>'+
+        '<button id="suggest-reply-btn" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);border-radius:6px;padding:7px 13px;font-size:12px;cursor:pointer;font-weight:700" onclick="suggestReply()">&#9997; Suggest Reply</button>'+
+      '<button style="background:var(--orange);color:#fff;border:none;border-radius:6px;padding:7px 13px;font-size:12px;cursor:pointer;font-weight:700" onclick="lpAddLog()">+ Log</button>'+
+      '<div id="suggest-reply-box" style="display:none;margin-top:10px;padding:12px 14px;background:#0a0f1a;border:1px solid #1e293b;border-radius:10px"></div>'+
       '</div></div>';
 }
 function renderLpClocks(l){
@@ -1795,7 +1802,7 @@ function runQuickImport(){
 
 
 // ── AI ASSISTANT ──────────────────────────────────────
-var aiParsed=null;
+var aiParsed=null,aiBulkParsed=null;
 
 function toggleAI(){
   var p=ge('ai-panel');
@@ -1850,6 +1857,10 @@ function sendAI(){
   if(!key){ge('ai-key-bar').style.display='flex';aiMsg('sys','Add your Gemini API key first.');return;}
   aiMsg('user',txt);
   inp.value='';
+  aiBulkParsed=null;
+  return sendAIBulk(txt,key);
+  // legacy single below kept for reference
+
   var thinkDiv=document.createElement('div');
   thinkDiv.style.cssText='padding:8px 11px;border-radius:10px;font-size:11px;color:#334155;border:1px solid #1e293b;background:rgba(255,255,255,.02);font-style:italic';
   thinkDiv.textContent='Thinking...';
@@ -1906,6 +1917,26 @@ function sendAI(){
 }
 
 function saveAILead(){
+  // Handle bulk save
+  if(aiBulkParsed&&aiBulkParsed.length){
+    var saved=0,skipped=0;
+    aiBulkParsed.forEach(function(p){
+      var em=(p.email||'').toLowerCase().trim();
+      var dupE=em?leads.find(function(l){return (l.email||'').toLowerCase().trim()===em;}):null;
+      var dupC=leads.find(function(l){return l.company&&p.company&&l.company.toLowerCase()===p.company.toLowerCase();});
+      if(dupE||dupC){skipped++;return;}
+      leads.unshift(p);syncLead(p);saved++;
+    });
+    saveLoc();renderAll();
+    ge('ai-preview').style.display='none';
+    ge('ai-save-btn').style.display='none';
+    ge('ai-discard-btn').style.display='none';
+    ge('ai-save-btn').textContent='Save Lead';
+    showBossCelebration(saved+' lead'+(saved!==1?'s':'')+' saved'+(skipped?' ('+skipped+' dup skipped)':''));
+    aiMsg('sys',saved+' lead'+(saved!==1?'s':'')+' saved!'+(skipped?' '+skipped+' duplicate'+(skipped>1?'s':'')+' skipped.':''));
+    aiBulkParsed=null;aiParsed=null;
+    return;
+  }
   if(!aiParsed){flash('Nothing to save','bad');return;}
   var co=aiParsed.company;
   var em=(aiParsed.email||'').toLowerCase().trim();
@@ -2266,6 +2297,265 @@ function doHealthCheck(body){
 
   body.innerHTML=html;
 }
+
+
+// ── MOBILE RELOAD ─────────────────────────────────────
+function mobileReload(){
+  var btn=ge('mob-reload-btn');
+  var icon=ge('mob-reload-icon');
+  if(btn){btn.disabled=true;btn.style.opacity='.6';}
+  if(icon){icon.style.animation='aiSpin .6s linear infinite';icon.textContent='⟳';}
+  reloadSheets();
+  setTimeout(function(){
+    if(btn){btn.disabled=false;btn.style.opacity='1';}
+    if(icon){icon.style.animation='';icon.textContent='🔄';}
+    var lc=ge('mobile-lcount');
+    if(lc)lc.textContent=leads.length+' leads · '+clients.length+' clients';
+  },3000);
+}
+
+// Update mobile count on renderAll
+var _origRenderAll=renderAll;
+renderAll=function(){
+  _origRenderAll();
+  var lc=ge('mobile-lcount');
+  if(lc)lc.textContent=leads.length+' leads · '+clients.length+' clients';
+};
+
+
+function syncDeletedLead(l){
+  var body='action=upsertDeleted&data='+encodeURIComponent(JSON.stringify(l));
+  fetch(SHEET_URL,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+    .then(function(r){return r.json();}).then(function(j){setSyn('',j.ok?'Synced ✓':'Sync error');}).catch(function(){setSyn('','Saved locally');});
+}
+function syncDeletedRemove(id){
+  fetch(SHEET_URL+'?action=deleteFromDeleted&id='+encodeURIComponent(id)+'&_='+Date.now())
+    .then(function(r){return r.json();}).catch(function(){});
+}
+function syncArchivedLead(l){
+  var body='action=upsertArchived&data='+encodeURIComponent(JSON.stringify(l));
+  fetch(SHEET_URL,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+    .then(function(r){return r.json();}).catch(function(){});
+}
+function syncArchivedRemove(id){
+  fetch(SHEET_URL+'?action=deleteFromArchived&id='+encodeURIComponent(id)+'&_='+Date.now())
+    .then(function(r){return r.json();}).catch(function(){});
+}
+
+// ── ARCHIVE TAB ────────────────────────────────────────
+function updateArchiveTabBadge(){
+  if(!archivedLeads)archivedLeads=[];
+  var btn=ge('arc-tab-btn');if(!btn)return;
+  btn.textContent=archivedLeads.length?'Archived ('+archivedLeads.length+')':'Archived';
+}
+
+function lpArchive(){
+  var l=leads.find(function(x){return String(x.id)===String(lpId);});if(!l)return;
+  var reason=prompt('Reason for archiving "'+l.company+'" (optional):','No reply after '+( l.followUpCount||0)+' follow-ups');
+  if(reason===null)return;
+  var archived=Object.assign({},l,{archivedDate:today(),archiveReason:reason||'Archived'});
+  archivedLeads.unshift(archived);
+  leads=leads.filter(function(x){return String(x.id)!==String(lpId);});
+  closeLp();
+  saveLoc();renderAll();
+  syncArchivedLead(archived);
+  flash('Archived: '+l.company);
+}
+
+function renderArchived(){
+  if(!archivedLeads)archivedLeads=[];
+  var da=ge('arc-area');if(!da)return;
+  updateArchiveTabBadge();
+  if(!archivedLeads.length){
+    da.innerHTML='<div style="text-align:center;padding:70px 20px"><div style="font-size:52px;margin-bottom:14px">&#128190;</div><div style="color:#333;font-size:13px;font-weight:600">No archived leads</div><div style="color:#222;font-size:12px;margin-top:6px">Archive cold or no-reply leads to keep your pipeline clean.</div></div>';
+    return;
+  }
+  var rows=archivedLeads.map(function(l,i){
+    var nc=NC[l.niche]||'#475569';
+    var bg=i%2===0?'#000':'rgba(255,255,255,.013)';
+    return '<tr style="background:'+bg+';opacity:.65">'+
+      '<td style="color:#222;font-family:monospace;font-size:11px">'+l.num+'</td>'+
+      '<td style="font-weight:700;color:var(--text2)">'+esc(l.company)+'</td>'+
+      '<td style="color:#475569;font-size:12px">'+esc(l.contact||'-')+'</td>'+
+      '<td><span style="color:'+nc+';font-size:11px;font-weight:700">'+esc(l.niche||'-')+'</span></td>'+
+      '<td style="color:#334155;font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(l.archiveReason||'-')+'</td>'+
+      '<td style="color:#333;font-size:11px;font-family:monospace">'+esc(l.archivedDate||'-')+'</td>'+
+      '<td><div style="display:flex;gap:4px">'+
+        '<button class="ab" style="background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2)" data-lid="'+l.id+'" onclick="unarchiveLead(this.dataset.lid)">&crarr; Restore</button>'+
+        '<button class="ab" style="background:rgba(239,68,68,.08);color:#fca5a5;border:1px solid rgba(239,68,68,.2)" data-lid="'+l.id+'" onclick="permArchiveDelete(this.dataset.lid)">&times; Delete</button>'+
+      '</div></td>'+
+    '</tr>';
+  }).join('');
+
+  da.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'+
+      '<div style="font-size:12px;color:#475569;font-weight:600">'+archivedLeads.length+' archived lead'+(archivedLeads.length!==1?'s':'')+' <span style="color:#222;font-size:11px">- restore if they reply</span></div>'+
+      '<button class="hb hb-g" style="color:#fca5a5;border-color:rgba(239,68,68,.2)" onclick="clearAllArchived()">Clear All</button>'+
+    '</div>'+
+    '<div class="twrap"><table><thead><tr>'+
+      '<th>#</th><th>Company</th><th>Contact</th><th>Niche</th><th>Reason</th><th>Archived On</th><th>Actions</th>'+
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+function unarchiveLead(id){
+  var l=archivedLeads.find(function(x){return String(x.id)===String(id);});
+  if(!l)return;
+  var restored=Object.assign({},l);delete restored.archivedDate;delete restored.archiveReason;
+  leads.push(restored);
+  archivedLeads=archivedLeads.filter(function(x){return String(x.id)!==String(id);});
+  saveLoc();renderArchived();renderAll();
+  syncArchivedRemove(id);syncLead(restored);
+  flash('Restored: '+l.company);
+}
+
+function permArchiveDelete(id){
+  var l=archivedLeads.find(function(x){return String(x.id)===String(id);});
+  if(!l||!confirm('Permanently delete "'+l.company+'"? Cannot be undone.'))return;
+  archivedLeads=archivedLeads.filter(function(x){return String(x.id)!==String(id);});
+  saveLoc();renderArchived();renderAll();
+  syncArchivedRemove(id);syncDelete(id);
+  flash('Permanently deleted','bad');
+}
+
+function clearAllArchived(){
+  if(!archivedLeads.length)return;
+  if(!confirm('Clear all '+archivedLeads.length+' archived leads? Cannot be undone.'))return;
+  var ids=archivedLeads.map(function(l){return l.id;});
+  archivedLeads=[];
+  saveLoc();renderArchived();renderAll();
+  ids.forEach(function(id,i){setTimeout(function(){syncArchivedRemove(id);},i*100);});
+  flash('Archive cleared','bad');
+}
+
+// ── SUGGEST REPLY (GEMINI) ─────────────────────────────
+function suggestReply(){
+  var l=leads.find(function(x){return String(x.id)===String(lpId);});if(!l)return;
+  var key=localStorage.getItem('bdl-gemini-key');
+  if(!key){alert('Add your Gemini API key in the AI panel first.');return;}
+  var btn=ge('suggest-reply-btn');
+  var box=ge('suggest-reply-box');
+  if(btn){btn.textContent='Thinking...';btn.disabled=true;}
+  if(box){box.style.display='none';}
+
+  var log=(l.outreachLog||[]).slice(-5).map(function(e){return e.date+': '+e.note;}).join('\n');
+    var promptParts=[
+    'You are a professional B2B sales assistant for Blue Data Labs, which sells verified contact lists.',
+    'Write a SHORT professional follow-up email for this lead:',
+    'Company: '+l.company,
+    'Contact: '+(l.contact||'Unknown'),
+    'Niche: '+(l.niche||'Unknown'),
+    'Status: '+l.status,
+    'Follow-up count: '+(l.followUpCount||0),
+    'Last contacted: '+(l.lastContacted||'Unknown'),
+    'Notes: '+(l.notes||'None'),
+    'Recent outreach log:',log,
+    'Rules:',
+    '- Max 4 sentences',
+    '- No subject line, just email body',
+    '- Sound human not salesy',
+    '- Reference their niche/context',
+    '- End with a clear simple CTA',
+    '- If follow-up count 5+, consider graceful exit tone',
+    'Return ONLY the email body text, nothing else.'
+  ];
+  var prompt=promptParts.join('\n');
+
+  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+key,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.4,maxOutputTokens:300}})
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    var text='';
+    try{text=d.candidates[0].content.parts[0].text;}catch(e){}
+    if(d.error)text='Error: '+d.error.message;
+    if(btn){btn.textContent='Suggest Reply';btn.disabled=false;}
+    if(box){
+      box.style.display='block';
+      box.innerHTML='<div style="font-size:10px;font-weight:700;color:#a78bfa;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Suggested Reply:</div>'+
+        '<div id="suggest-reply-text" style="font-size:12px;color:#e2e8f0;line-height:1.7;white-space:pre-wrap;background:#0d1424;border:1px solid #1e293b;border-radius:8px;padding:12px">'+esc(text)+'</div>'+
+        '<div style="display:flex;gap:6px;margin-top:8px">'+
+          '<button onclick="copySuggestedReply()" style="background:rgba(79,70,229,.15);color:#a78bfa;border:1px solid rgba(79,70,229,.3);border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">&#128203; Copy</button>'+
+          '<button onclick="ge(\'suggest-reply-box\').style.display=\'none\'" style="background:#111;color:#475569;border:1px solid #1e293b;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer">&#10005;</button>'+
+        '</div>';
+    }
+  })
+  .catch(function(err){
+    if(btn){btn.textContent='Suggest Reply';btn.disabled=false;}
+    if(box){box.style.display='block';box.innerHTML='<div style="color:#fca5a5;font-size:12px">Error: '+err.message+'</div>';}
+  });
+}
+
+function copySuggestedReply(){
+  var el=ge('suggest-reply-text');
+  if(!el)return;
+  navigator.clipboard.writeText(el.textContent).then(function(){flash('Copied to clipboard!');}).catch(function(){
+    var r=document.createRange();r.selectNode(el);window.getSelection().removeAllRanges();window.getSelection().addRange(r);
+    document.execCommand('copy');flash('Copied!');
+  });
+}
+
+// ── AI UPGRADE: ANY FORMAT, MULTIPLE COMPANIES ─────────
+function sendAIBulk(txt, key){
+  var t=today();
+  var nextIdBase=leads.reduce(function(mx,l){var mm=String(l.id).match(/^bdl_(\d+)$/);return mm?Math.max(mx,parseInt(mm[1])):mx;},0)+1;
+  var nextNumBase=leads.reduce(function(mx,l){return Math.max(mx,l.num||0);},0)+1;
+  var senderList=SENDERS.join(', ');
+
+  var prompt='You are a CRM assistant for Blue Data Labs. Parse input, extract ALL leads. Return JSON array only, no markdown. Each object needs: id (bdl_N from '+nextIdBase+'), num (from '+nextNumBase+'), company, contact, email, title, niche (Dental/Education/SaaS/Healthcare Staffing/Real Estate PropTech/Junk Removal/Property Services/AI Tech/Finance Lending or guess), status (Pending/Sent/Warm Lead/Bounced/Replied), decisionMaker (Yes/No/empty), city, state, timezone, followUpDate (YYYY-MM-DD 4-5 biz days from '+t+'), lastContacted ('+t+'), lastSender (from: '+senderList+'), followUpCount (1), outreachLog ([{date,note,sender}]), dealStage (Contacted), dealValue, contacts ([{id,name,email,title,priority Primary/Backup,status Active}]). RULES: multiple contacts same company = ONE lead. Multiple companies = multiple leads. Auto-detect company from email domain. Today is '+t+'. Input: '+txt;
+
+  var thinkDiv=document.createElement('div');
+  thinkDiv.style.cssText='padding:8px 11px;border-radius:10px;font-size:11px;color:#334155;border:1px solid #1e293b;background:rgba(255,255,255,.02);font-style:italic;margin-bottom:4px';
+  thinkDiv.textContent='Parsing your input...';
+  ge('ai-chat').appendChild(thinkDiv);
+  ge('ai-chat').scrollTop=ge('ai-chat').scrollHeight;
+
+  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+key,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.1,maxOutputTokens:4000}})
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    ge('ai-chat').removeChild(thinkDiv);
+    if(d.error){aiMsg('ai','Error: '+d.error.message);return;}
+    var raw='';
+    try{raw=d.candidates[0].content.parts[0].text;}catch(e){}
+    raw=raw.replace(/```json|```/g,'').trim();
+    try{
+      var parsed=JSON.parse(raw);
+      if(!Array.isArray(parsed))parsed=[parsed];
+      aiBulkParsed=parsed;
+
+      var prev=ge('ai-preview');
+      prev.style.display='block';
+      prev.innerHTML='<div style="font-weight:700;color:#a78bfa;margin-bottom:8px;font-size:10px;text-transform:uppercase;letter-spacing:.5px">Found '+parsed.length+' lead'+(parsed.length!==1?'s':'')+' — review before saving:</div>'+
+        parsed.map(function(p,i){
+          return '<div style="background:#0d1424;border:1px solid #1e293b;border-radius:7px;padding:8px 10px;margin-bottom:6px">'+
+            '<b style="color:#e2e8f0">'+esc(p.company||'?')+'</b> <span style="color:#f97316;font-size:11px">'+esc(p.niche||'')+'</span><br>'+
+            '<span style="color:#64748b;font-size:11px">'+
+              (p.contacts&&p.contacts.length?p.contacts.length+' contact'+(p.contacts.length>1?'s':''):esc(p.contact||''))+
+              ' &nbsp;|&nbsp; '+esc(p.status||'')+' &nbsp;|&nbsp; FU: '+esc(p.followUpDate||'')+
+            '</span>'+
+          '</div>';
+        }).join('');
+
+      ge('ai-save-btn').style.display='block';
+      ge('ai-discard-btn').style.display='block';
+      ge('ai-save-btn').textContent='Save '+parsed.length+' Lead'+(parsed.length!==1?'s':'');
+      aiMsg('ai','Found '+parsed.length+' lead'+(parsed.length!==1?'s':'')+'. Review above and save!');
+    }catch(err){
+      aiBulkParsed=null;
+      aiMsg('ai','Could not parse. Try rephrasing. Got: '+raw.substring(0,150));
+    }
+  })
+  .catch(function(err){
+    ge('ai-chat').removeChild(thinkDiv);
+    aiMsg('ai','Network error: '+err.message);
+  });
+}
+
 
 // ── NICHE DATALIST ───────────────────────────────────
 function populateNicheList(){
@@ -2910,6 +3200,15 @@ function saveNewContact(){
       <button onclick="ge('hc-modal').style.display='none'" style="background:#111;color:#475569;border:1px solid #1e293b;border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer">Close</button>
     </div>
   </div>
+</div>
+
+
+<!-- MOBILE RELOAD BAR -->
+<div id="mobile-reload-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:500;background:#0a0f1a;border-top:1px solid #1e293b;padding:10px 16px;gap:10px;align-items:center;justify-content:space-between">
+  <span id="mobile-lcount" style="font-size:11px;color:#475569;font-weight:600"></span>
+  <button onclick="mobileReload()" id="mob-reload-btn" style="background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px">
+    <span id="mob-reload-icon">🔄</span> Sync Latest
+  </button>
 </div>
 
 </body>
