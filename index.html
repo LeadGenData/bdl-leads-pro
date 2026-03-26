@@ -2783,7 +2783,7 @@ function runSmartUpdate(){
     '',
     'Return ONLY a JSON object with fields to update. Only include fields that actually need changing.',
     'Available fields and rules:',
-    'status: "Warm Lead" if positive reply/interest. "Bounced" if email failed AND lead is NOT currently Warm Lead. "Replied" if they responded. Keep current if just notes.',
+    'status rules: Use "Warm Lead" if they replied with ANY interest, YES, question, request, or positive tone. Use "Warm Lead" if they said yes/interested/want/awesome/great/sure/please/send. Use "Bounced" ONLY if email delivery failed. Use "Replied" ONLY for neutral/negative/unsubscribe replies. When in doubt between Warm Lead and Replied — always pick Warm Lead.',
     'followUpDate: YYYY-MM-DD. Set 2-3 days out for replies, 4-5 for follow-ups. Null if bounced cold lead.',
     'dealStage: "Sample Sent" if sample discussed. "Proposal" if price/invoice mentioned. "Contacted" default.',
     'notes: append new info to existing notes. Keep concise.',
