@@ -767,27 +767,39 @@ function getPriBadge(l){var t=today();if(l.followUpDate&&l.followUpDate<t&&['Bou
 
 // SHEETS
 function sheetRead(){return fetch(SHEET_URL+'?_='+Date.now()).then(function(r){return r.json();}).catch(function(){return null;});}
-function sheetWrite(p){
+function sheetWrite(p,retry){
   setSyn('syn','Saving…');
-  // DELETE stays as GET (tiny payload)
   if(p.action==='deleteLead'){
     fetch(SHEET_URL+'?action=deleteLead&id='+encodeURIComponent(p.id)+'&_='+Date.now())
-      .then(function(r){return r.json();}).then(function(j){setSyn('',j.ok?'Synced ✓':'Error');}).catch(function(){setSyn('','Saved locally');});
+      .then(function(r){return r.json();})
+      .then(function(j){setSyn('',j.ok?'Synced ✓':'⚠ Sync error');})
+      .catch(function(){
+        setSyn('','⚠ Not synced');
+        if(!retry)setTimeout(function(){sheetWrite(p,true);},4000);
+      });
     return;
   }
-  // Use form-encoded POST — avoids CORS preflight issue with Apps Script
   var action=p.action||'upsertLead';
-  var dataStr=p.action==='saveClients'
-    ?JSON.stringify(p.data||[])
-    :JSON.stringify(p.data||{});
+  var dataStr=p.action==='saveClients'?JSON.stringify(p.data||[]):JSON.stringify(p.data||{});
   var body='action='+encodeURIComponent(action)+'&data='+encodeURIComponent(dataStr);
   fetch(SHEET_URL,{
     method:'POST',
     headers:{'Content-Type':'application/x-www-form-urlencoded'},
     body:body
   }).then(function(r){return r.json();})
-    .then(function(j){setSyn('',j.ok?'Synced ✓':'Error: '+(j.error||''));})
-    .catch(function(e){setSyn('','Saved locally');});
+  .then(function(j){
+    if(j.ok){
+      setSyn('','Synced ✓');
+    } else {
+      setSyn('','⚠ '+( j.error||'Sync error'));
+      if(!retry)setTimeout(function(){sheetWrite(p,true);},4000);
+    }
+  })
+  .catch(function(){
+    setSyn('','⚠ Not synced — retrying…');
+    if(!retry)setTimeout(function(){sheetWrite(p,true);},4000);
+    else setSyn('','⚠ Offline — tap Sync All');
+  });
 }
 function syncLead(l){sheetWrite({action:'upsertLead',data:l});}
 function syncDelete(id){sheetWrite({action:'deleteLead',id:String(id)});}
@@ -862,7 +874,7 @@ function login(){
   });
 }
 function logout(){ge('app').classList.add('h');ge('login').classList.remove('h');ge('lu').value='';ge('lpw').value='';leads=[];clients=[];who='';closeLp();stopClock();}
-function reloadSheets(){ge('load').classList.remove('h');sheetRead().then(function(d){if(d&&d.leads&&d.leads.length){leads=normLeads(d.leads);clients=d.clients||[];saveLoc();}ge('load').classList.add('h');renderAll();flash('✓ Reloaded!');});}
+function reloadSheets(){ge('load').classList.remove('h');sheetRead().then(function(d){if(d&&d.leads&&d.leads.length){leads=normLeads(d.leads);clients=d.clients||[];if(d.deletedLeads)deletedLeads=d.deletedLeads;if(d.archivedLeads)archivedLeads=d.archivedLeads;saveLoc();}ge('load').classList.add('h');renderAll();flash('✓ Reloaded from Sheets!');}).catch(function(){ge('load').classList.add('h');flash('Could not reach Sheets — showing local data','bad');});}
 function syncAll(){
   var i=0;
   setSyn('syn','Syncing 0/'+leads.length+'…');
@@ -2409,12 +2421,27 @@ function doHealthCheck(body){
 
 
 // ── MOBILE RELOAD ─────────────────────────────────────
+function pushLocalLeads(){
+  // Push any leads that might not be in Sheets yet
+  var loc=loadLoc();
+  var localOnly=(loc.leads||[]).filter(function(l){
+    return String(l.id).startsWith('bdl_');
+  });
+  if(!localOnly.length)return;
+  var i=0;
+  (function pushNext(){
+    if(i>=Math.min(localOnly.length,5))return;
+    syncLead(localOnly[i]);i++;
+    setTimeout(pushNext,200);
+  })();
+}
 function mobileReload(){
   var btn=ge('mob-reload-btn');
   var icon=ge('mob-reload-icon');
   if(btn){btn.disabled=true;btn.style.opacity='.6';}
   if(icon){icon.style.animation='aiSpin .6s linear infinite';icon.textContent='⟳';}
-  reloadSheets();
+  pushLocalLeads();
+  setTimeout(function(){reloadSheets();},800);
   setTimeout(function(){
     if(btn){btn.disabled=false;btn.style.opacity='1';}
     if(icon){icon.style.animation='';icon.textContent='🔄';}
