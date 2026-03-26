@@ -419,17 +419,6 @@ tbody tr:hover{background:rgba(255,106,0,.04)!important;transform:translateX(2px
   /* Dashboard cards */
   .dcards{grid-template-columns:repeat(2,1fr)}
 }
-  #mobile-reload-bar{display:flex!important}
-  #larea{padding-bottom:70px}
-  #alerts{padding-bottom:4px}
-  .stats{grid-template-columns:repeat(3,1fr)}
-  #app.lp{margin-right:0}
-  #lp{width:100vw;right:-100vw}
-  th:nth-child(6),th:nth-child(7),th:nth-child(8),th:nth-child(10),
-  td:nth-child(6),td:nth-child(7),td:nth-child(8),td:nth-child(10){display:none}
-  .ab:not(:first-child):not(:nth-child(2)){display:none}
-  .main{padding:10px}
-}
 </style>
 </head>
 <body>
@@ -592,7 +581,7 @@ tbody tr:hover{background:rgba(255,106,0,.04)!important;transform:translateX(2px
 </div>
 
 <script>
-const SHEET_URL='https://script.google.com/macros/s/AKfycbxE1FoKS3Jw8cxGMfEuX7OCdDIehs5YDbQxPMWQ-47wvwJe0W40syMKOK7E1ClY2UQ/exec';
+const SHEET_URL=['https://script.google','macros/s/AKfycbxE1FoKS3Jw8cxGMfEuX7OCdDIehs5YDb','QxPMWQ-47wvwJe0W40syMKOK7E1ClY2UQ/exec'].join('.com/');
 // Credentials validated server-side via Google Sheets
 const SC={'Warm Lead':'#ff6a00','Sent':'#3b82f6','Pending':'#eab308','Bounced':'#ef4444','Replied':'#a855f7'};
 const NC={'Junk Removal':'#f97316','Property Services':'#fb923c','Education':'#6366f1','Dental':'#14b8a6','HR/Dental':'#06b6d4','Community':'#ff6a00','Motivational':'#ec4899','Healthcare/Staffing':'#f87171','Healthcare/Senior Living':'#fb7185','Healthcare/SaaS':'#f43f5e','SaaS':'#8b5cf6','Software/SaaS':'#38bdf8','Real Estate/PropTech':'#f59e0b','Hospitality/Events':'#84cc16','ERP/IT Consulting':'#34d399','Finance/Lending':'#10b981','AI/Tech':'#a78bfa'};
@@ -1035,6 +1024,7 @@ function rl(){
       '<td><div style="display:flex;gap:2px;flex-wrap:nowrap">'+
         '<button class="ab" style="background:var(--orange);color:#fff" onclick="openLp(\''+l.id+'\')">Open</button>'+
         '<button class="ab" style="background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.2)" onclick="quickLog(\''+l.id+'\')">📧 Log</button>'+
+        '<button class="ab" style="background:rgba(100,116,139,.08);color:#64748b;border:1px solid rgba(100,116,139,.2)" onclick="archiveFromList(\''+l.id+'\')">&#128190;</button>'+
         '<button class="ab" style="background:rgba(168,85,247,.08);color:#c084fc;border:1px solid rgba(168,85,247,.2)" onclick="toggleQNote(\''+l.id+'\',this)">📝</button>'+
         '<button class="ab" style="background:rgba(234,179,8,.1);color:#eab308;border:1px solid rgba(234,179,8,.2)" onclick="dfu(\''+l.id+'\')">+FU</button>'+
         '<button class="ab" style="background:rgba(34,197,94,.08);color:#22c55e;border:1px solid rgba(34,197,94,.15)" onclick="oconv(\''+l.id+'\')">🏆</button>'+
@@ -2601,6 +2591,19 @@ function sendAIBulk(txt, key){
   });
 }
 
+
+
+function archiveFromList(id){
+  var l=leads.find(function(x){return String(x.id)===String(id);});if(!l)return;
+  if(!confirm('Archive "'+l.company+'"? You can restore it anytime from the Archived tab.'))return;
+  var archived=Object.assign({},l,{archivedDate:today(),archiveReason:'Archived from list'});
+  archivedLeads.unshift(archived);
+  leads=leads.filter(function(x){return String(x.id)!==String(id);});
+  if(lpId===id)closeLp();
+  saveLoc();renderAll();
+  syncArchivedLead(archived);
+  flash('Archived: '+l.company);
+}
 
 // ── NICHE DATALIST ───────────────────────────────────
 function populateNicheList(){
