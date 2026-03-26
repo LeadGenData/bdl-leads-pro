@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -372,52 +376,137 @@ tbody tr:hover{background:rgba(255,106,0,.04)!important;transform:translateX(2px
 
 /* ══════════════════════════════════════════════════════ */
 
+
+/* ── SMART UPDATE PANEL ────────────────────────────── */
+@keyframes suSlideUp{0%{opacity:0;transform:translateY(20px) scale(.97)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes suPulse{0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,.3)}50%{box-shadow:0 0 0 8px rgba(139,92,246,.0)}}
+@keyframes suTyping{0%,60%,100%{opacity:.3;transform:scale(.8)}30%{opacity:1;transform:scale(1)}}
+@keyframes suResult{0%{opacity:0;transform:translateX(-8px)}100%{opacity:1;transform:translateX(0)}}
+#su-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9997;backdrop-filter:blur(8px);align-items:flex-end;justify-content:center}
+#su-modal.open{display:flex;animation:fi .2s ease}
+#su-sheet{width:100%;max-width:520px;background:#0a0f1a;border-radius:20px 20px 0 0;border:1px solid #1e293b;border-bottom:none;box-shadow:0 -20px 60px rgba(0,0,0,.8);animation:suSlideUp .3s cubic-bezier(.16,1,.3,1)}
+@media(min-width:769px){
+  #su-modal{align-items:center}
+  #su-sheet{border-radius:20px;border:1px solid #1e293b;max-height:90vh;overflow:hidden}
+}
+.su-header{padding:16px 20px 12px;border-bottom:1px solid #0d1424;display:flex;align-items:center;justify-content:space-between}
+.su-title{font-size:14px;font-weight:900;color:#a78bfa;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+.su-badge{font-size:10px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);border-radius:20px;padding:2px 8px;color:#a78bfa}
+.su-body{padding:16px 20px}
+.su-textarea{width:100%;background:#060b14;border:1px solid #1e293b;border-radius:12px;padding:14px;color:#e2e8f0;font-size:13px;line-height:1.7;resize:none;outline:none;font-family:inherit;box-sizing:border-box;transition:border-color .2s,box-shadow .2s;min-height:110px}
+.su-textarea:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+.su-textarea::placeholder{color:#1e293b}
+.su-actions{display:flex;gap:8px;margin-top:12px;align-items:center}
+.su-send{flex:1;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.su-send:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(79,70,229,.3)}
+.su-send:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.su-cancel{background:#111;color:#475569;border:1px solid #1e293b;border-radius:10px;padding:12px 16px;font-size:12px;cursor:pointer}
+.su-hints{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.su-hint{background:#060b14;border:1px solid #1e293b;border-radius:20px;padding:5px 12px;font-size:11px;color:#334155;cursor:pointer;transition:all .15s}
+.su-hint:hover{border-color:#4f46e5;color:#a78bfa;background:rgba(79,70,229,.05)}
+.su-processing{display:none;padding:14px 16px;align-items:center;gap:12px}
+.su-processing.show{display:flex}
+.su-typing-dot{width:6px;height:6px;background:#a78bfa;border-radius:50%;animation:suTyping 1s ease-in-out infinite}
+.su-typing-dot:nth-child(2){animation-delay:.2s}
+.su-typing-dot:nth-child(3){animation-delay:.4s}
+.su-result{display:none;padding:0 20px 16px}
+.su-result.show{display:block;animation:suResult .25s ease}
+.su-changes{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.su-change{background:#060b14;border:1px solid #1e293b;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px}
+.su-change-icon{font-size:16px;flex-shrink:0}
+.su-change-field{font-size:10px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.su-change-val{font-size:12px;color:#e2e8f0;font-weight:600}
+.su-change-old{font-size:11px;color:#334155;text-decoration:line-through}
+.su-apply{width:100%;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;padding:13px;font-size:13px;font-weight:800;cursor:pointer;margin-bottom:6px;transition:all .15s}
+.su-apply:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(16,185,129,.3)}
+.su-discard{width:100%;background:transparent;color:#334155;border:none;font-size:12px;cursor:pointer;padding:4px}
+
 @media(max-width:768px){
-  /* Layout */
+  /* ── APP SHELL ── */
+  body{-webkit-overflow-scrolling:touch;overscroll-behavior:none}
+  #app{height:100dvh;height:100svh;display:flex;flex-direction:column;overflow:hidden}
+
+  /* ── HEADER — compact app bar ── */
+  .hdr{padding:10px 14px;min-height:52px}
+  .brand h1{font-size:15px}
+  .brand p{font-size:10px}
+  .logo{width:28px;height:28px}
   .hacts .hb-g{display:none}
-  #mobile-reload-bar{display:flex!important}
-  .main{padding:8px 10px}
-  #larea{padding-bottom:80px}
-  #alerts{padding-bottom:4px}
+  .hacts .hb-o{display:none}
+  #ulbl{display:none}
+  .syns{display:none}
+  .hacts{gap:5px}
+  .hb{font-size:11px;padding:6px 10px;border-radius:8px}
+  #ai-magic-btn{padding:6px 10px}
 
-  /* Stats cards — 2 per row */
-  .stats{grid-template-columns:repeat(2,1fr);gap:8px}
-  .sc-val{font-size:20px}
+  /* ── MAIN SCROLLABLE AREA ── */
+  .main{padding:10px 12px;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:120px;min-height:0}
+
+  /* ── STATS — 2 per row, compact ── */
+  .stats{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+  .sc{border-radius:12px}
+  .sc-val{font-size:22px;letter-spacing:-1px}
   .sc-body{padding:10px 12px 8px}
+  .sc-lbl{font-size:10px}
+  .sc-foot{padding:5px 12px}
 
-  /* Lead panel full screen */
-  #app.lp{margin-right:0}
-  #lp{width:100vw;right:-100vw;border-radius:0}
+  /* ── TABS — app-style bottom feel ── */
+  .tabs-row{margin-bottom:10px}
+  .tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;scrollbar-width:none;border-radius:8px}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap;font-size:11px;padding:7px 14px;border-radius:6px}
 
-  /* Table — hide less important cols */
-  th:nth-child(6),th:nth-child(7),th:nth-child(8),th:nth-child(10),
+  /* ── FILTERS — collapsible feel ── */
+  .filters{flex-wrap:wrap;gap:7px;padding:8px 0}
+  .filters input,.filters select{font-size:13px;padding:8px 10px;border-radius:10px;-webkit-appearance:none}
+  #srch{width:100%;flex:1 1 100%;font-size:14px;padding:10px 12px}
+  .addb{padding:9px 14px;font-size:12px;border-radius:10px}
+
+  /* ── TABLE → CARD LAYOUT on mobile ── */
+  .twrap{border:none;border-radius:0;overflow:visible}
+  table{display:block}
+  thead{display:none}
+  tbody{display:flex;flex-direction:column;gap:8px}
+  tbody tr{display:flex;flex-direction:column;background:#0a0a0a!important;border:1px solid #1a1a1a;border-radius:14px;padding:12px 14px;animation:cardIn .25s ease both;transform:none!important}
+  tbody tr:hover{background:#0d0d0d!important;transform:none!important}
+  td{display:block;border:none!important;padding:0!important;background:transparent!important}
+  td:nth-child(1){display:none}
   td:nth-child(6),td:nth-child(7),td:nth-child(8),td:nth-child(10){display:none}
-  .ab:not(:first-child):not(:nth-child(2)){display:none}
+  /* Company name */
+  td:nth-child(3){font-size:14px;font-weight:800;color:#e2e8f0;margin-bottom:4px}
+  /* Contact */
+  td:nth-child(4){font-size:12px;color:#64748b;margin-bottom:6px}
+  /* Status select */
+  td:nth-child(5){margin-bottom:8px}
+  td:nth-child(5) select{width:100%;border-radius:8px;padding:7px 10px;font-size:12px}
+  /* Actions */
+  td:nth-child(9){display:flex;gap:6px;flex-wrap:wrap}
+  .ab{padding:7px 14px;font-size:12px;border-radius:8px;flex:1;text-align:center}
 
-  /* Tabs — scrollable */
-  .tabs{overflow-x:auto;width:100%;border-radius:8px}
-  .tabs-row{overflow-x:auto}
-  .tab{white-space:nowrap;font-size:11px;padding:6px 12px}
+  /* ── LEAD PANEL — full screen sheet ── */
+  #app.lp{overflow:hidden}
+  #lp{width:100vw;right:-100vw;border-radius:0;top:0}
+  .lp-head{padding:14px 16px;min-height:54px}
+  .lp-body{padding:14px 16px}
+  .lp-f label{font-size:11px}
+  .lp-f input,.lp-f select,.lp-f textarea{font-size:14px;padding:9px 12px;border-radius:10px}
+  .lp-foot{padding:12px 16px;gap:8px;border-top:1px solid #1a1a1a;background:#000;position:sticky;bottom:0}
+  .lp-save{padding:13px;font-size:13px;border-radius:12px}
+  .lp-del{padding:13px;font-size:13px;border-radius:12px}
+  .lp-fu-btn{padding:13px;font-size:12px;border-radius:12px}
 
-  /* Filters — stack */
-  .filters{flex-wrap:wrap;gap:6px}
-  .filters input,.filters select{font-size:12px;padding:6px 8px}
-  #srch{width:100%;flex:1 1 100%}
+  /* ── MOBILE RELOAD BAR ── */
+  #mobile-reload-bar{padding:10px 16px;padding-bottom:max(10px,env(safe-area-inset-bottom))}
 
-  /* Toolbar */
-  .hacts{gap:4px;flex-wrap:wrap}
-  .hb{font-size:11px;padding:5px 8px}
+  /* ── DASHBOARD ── */
+  .dcards{grid-template-columns:repeat(2,1fr);gap:8px}
+  .dcard{padding:12px}
 
-  /* Lead panel footer */
-  .lp-foot{gap:6px}
-  .lp-save{font-size:11px;padding:8px}
-  .lp-del{font-size:11px;padding:8px}
+  /* ── MODALS ── */
+  .modal{width:calc(100vw - 32px);max-height:80vh;overflow-y:auto;border-radius:16px}
 
-  /* Action plan */
-  #alerts>div>div{flex-wrap:wrap}
-
-  /* Dashboard cards */
-  .dcards{grid-template-columns:repeat(2,1fr)}
+  /* ── AI PANEL ── */
+  #ai-panel{width:100vw;border-radius:14px 14px 0 0}
 }
 </style>
 </head>
@@ -476,10 +565,7 @@ tbody tr:hover{background:rgba(255,106,0,.04)!important;transform:translateX(2px
       <button class="hb hb-o" onclick="copyForClaude()" title="Copy pipeline summary to paste into Claude.ai">📋 Copy for Claude</button>
       <button class="hb hb-g" onclick="reloadSheets()">🔄 Reload</button>
       <button class="hb hb-g" onclick="exportCSV()" title="Download all leads as CSV">⬇️ CSV</button>
-      <button class="hb hb-g" onclick="fixOverdue()" title="Reset all overdue follow-up dates from last log entry">🔧 Fix Overdue</button>
       <button class="hb" onclick="toggleSenderPanel()" title="Manage sender emails" style="background:rgba(100,116,139,.1);color:#94a3b8;border:1px solid #1e293b">⚙️ Senders</button>
-      <button class="hb hb-g" onclick="testConnection()" title="Test connection to Google Sheets">🔌 Test</button>
-      <button class="hb hb-g" onclick="testPost()" title="Test writing one lead to Sheets">✏️ Test Write</button>
       <button class="hb hb-o" onclick="syncAll()">☁️ Sync All</button>
       <button class="hb hb-g" onclick="logout()">Sign Out</button>
       <button class="hb" style="background:rgba(16,185,129,.1);color:#34d399;border:1px solid rgba(16,185,129,.2)" onclick="runHealthCheck()" title="App Health Check">🩺 Health</button>
@@ -561,6 +647,7 @@ tbody tr:hover{background:rgba(255,106,0,.04)!important;transform:translateX(2px
   <div class="lp-scroll" id="lp-scroll"></div>
   <div class="lp-foot">
     <button class="lp-fu-btn" onclick="lpFU()">+1 Follow-up</button>
+    <button style="flex:1;background:linear-gradient(135deg,rgba(79,70,229,.2),rgba(124,58,237,.2));color:#a78bfa;border:1px solid rgba(139,92,246,.3);border-radius:8px;padding:10px;font-size:12px;font-weight:800;cursor:pointer;transition:all .15s" onclick="openSmartUpdate()" title="Smart Update — paste any text to auto-update this lead">&#9889; Smart Update</button>
     <button class="lp-save" onclick="lpSave()">💾 Save Changes</button>
     <button class="lp-del" onclick="lpDel()" title="Delete">🗑</button>
     <button class="lp-del" style="background:rgba(100,116,139,.08);color:#64748b;border-color:rgba(100,116,139,.2)" onclick="lpArchive()" title="Archive">📂</button>
@@ -2605,6 +2692,279 @@ function archiveFromList(id){
   flash('Archived: '+l.company);
 }
 
+
+// ── SMART UPDATE ──────────────────────────────────────────
+var suLead=null, suChanges=null;
+
+function openSmartUpdate(){
+  var l=leads.find(function(x){return String(x.id)===String(lpId);});
+  if(!l){flash('Open a lead first','bad');return;}
+  var key=localStorage.getItem('bdl-gemini-key');
+  if(!key){alert('Add your Gemini API key in the AI panel first.');return;}
+  suLead=l;
+  ge('su-input').value='';
+  ge('su-processing').classList.remove('show');
+  ge('su-result').classList.remove('show');
+  ge('su-changes').innerHTML='';
+  ge('su-send-btn').disabled=false;
+  ge('su-send-icon').textContent='\u26a1';
+  ge('su-send-txt').textContent='Analyse & Update';
+  ge('su-lead-name').textContent=l.company;
+  var modal=ge('su-modal');
+  modal.classList.add('open');
+  modal.onclick=function(e){if(e.target===modal)closeSmartUpdate();};
+  setTimeout(function(){ge('su-input').focus();},300);
+}
+
+function closeSmartUpdate(){
+  ge('su-modal').classList.remove('open');
+  suLead=null;suChanges=null;
+}
+
+function suFill(el){
+  var hints={
+    '\u2705 Replied positively':'Contact replied positively to our pitch. Interested in moving forward.',
+    '\U0001f4e7 Email bounced':'Email bounced. Delivery failed.',
+    '\U0001f525 Wants to proceed':'They want to proceed with the order.',
+    '\U0001f4e4 Out of office':'Out of office reply received.',
+    '\u274c Not interested':'Replied saying not interested, please remove from list.',
+    '\U0001f4e6 Sample requested':'They replied asking for a sample.'
+  };
+  ge('su-input').value=hints[el.textContent]||el.textContent;
+  ge('su-input').focus();
+}
+
+function runSmartUpdate(){
+  var txt=(ge('su-input').value||'').trim();
+  if(!txt){ge('su-input').focus();return;}
+  if(!suLead)return;
+  var key=localStorage.getItem('bdl-gemini-key');
+  if(!key){alert('Add Gemini API key first.');return;}
+
+  ge('su-send-btn').disabled=true;
+  ge('su-send-txt').textContent='Analysing...';
+  ge('su-processing').classList.add('show');
+  ge('su-result').classList.remove('show');
+
+  var t=today();
+  var l=suLead;
+  var currentState=[
+    'company:'+l.company,
+    'status:'+l.status,
+    'niche:'+l.niche||'',
+    'followUpDate:'+l.followUpDate||'',
+    'dealStage:'+l.dealStage||'',
+    'notes:'+(l.notes||'').substring(0,200),
+    'followUpCount:'+(l.followUpCount||0),
+    'isWarmLead:'+(l.status==='Warm Lead'?'YES':'NO')
+  ].join('\n');
+
+  var promptArr=[
+    'You are a CRM update assistant for Blue Data Labs (B2B leads business).',
+    'Analyse the pasted text and determine what fields to update on this lead.',
+    'Current lead state:',
+    currentState,
+    '',
+    'Today: '+t,
+    '',
+    'Return ONLY a JSON object with fields to update. Only include fields that actually need changing.',
+    'Available fields and rules:',
+    'status: "Warm Lead" if positive reply/interest. "Bounced" if email failed AND lead is NOT currently Warm Lead. "Replied" if they responded. Keep current if just notes.',
+    'followUpDate: YYYY-MM-DD. Set 2-3 days out for replies, 4-5 for follow-ups. Null if bounced cold lead.',
+    'dealStage: "Sample Sent" if sample discussed. "Proposal" if price/invoice mentioned. "Contacted" default.',
+    'notes: append new info to existing notes. Keep concise.',
+    'servicesNeeded: update if specific products/cities/markets mentioned.',
+    'newLogEntry: ALWAYS include - string describing what happened for outreach log.',
+    'moveToDeleted: true ONLY if email bounced AND status is NOT Warm Lead AND NOT Replied.',
+    'archiveSuggested: true if "not interested" or explicit rejection.',
+    'city: update ONLY if this is the lead company HQ city, NOT order target cities.',
+    '',
+    'Example output:',
+    '{"status":"Warm Lead","followUpDate":"2026-03-27","dealStage":"Proposal","servicesNeeded":"Phoenix and Austin dentist contacts","newLogEntry":"Kyle confirmed Phoenix and Austin as target markets. Invoice to be sent Monday.","notes":"Confirmed cities: Phoenix, Austin"}',
+    '',
+    'Pasted text to analyse:',
+    txt
+  ];
+  var prompt=promptArr.join('\n');
+
+  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+key,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.1,maxOutputTokens:600}})
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    ge('su-processing').classList.remove('show');
+    ge('su-send-btn').disabled=false;
+    ge('su-send-txt').textContent='Analyse & Update';
+    ge('su-send-icon').textContent='\u26a1';
+    if(d.error){showSuError('API Error: '+d.error.message);return;}
+    var raw='';
+    try{raw=d.candidates[0].content.parts[0].text;}catch(e){}
+    raw=raw.replace(/```json|```/g,'').trim();
+    try{
+      var changes=JSON.parse(raw);
+      suChanges=changes;
+      showSuChanges(changes,l);
+    }catch(e){
+      showSuError('Could not parse. Try rephrasing. Got: '+raw.substring(0,100));
+    }
+  })
+  .catch(function(err){
+    ge('su-processing').classList.remove('show');
+    ge('su-send-btn').disabled=false;
+    ge('su-send-txt').textContent='Analyse & Update';
+    showSuError('Network error: '+err.message);
+  });
+}
+
+function showSuError(msg){
+  ge('su-result').classList.add('show');
+  ge('su-changes').innerHTML='<div style="padding:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;color:#fca5a5;font-size:12px">'+esc(msg)+'</div>';
+  ge('su-result').querySelector('.su-apply').style.display='none';
+}
+
+var suFieldLabels={
+  status:'Status',followUpDate:'Follow-up Date',dealStage:'Deal Stage',
+  notes:'Notes',servicesNeeded:'Services Needed',city:'City',
+  newLogEntry:'New Log Entry',moveToDeleted:'Move to Deleted',archiveSuggested:'Archive Suggestion'
+};
+var suFieldIcons={
+  status:'\U0001f7e2',followUpDate:'\U0001f4c5',dealStage:'\U0001f4ca',
+  notes:'\U0001f4dd',servicesNeeded:'\U0001f4e6',city:'\U0001f4cd',
+  newLogEntry:'\U0001f4cb',moveToDeleted:'\U0001f5d1',archiveSuggested:'\U0001f4c2'
+};
+
+function showSuChanges(changes,l){
+  var result=ge('su-result');
+  var changesDiv=ge('su-changes');
+  result.classList.add('show');
+  var applyBtn=result.querySelector('.su-apply');
+  applyBtn.style.display='block';
+
+  var html='<div style="font-size:11px;color:#334155;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding:0 2px">'+Object.keys(changes).length+' changes detected:</div>';
+
+  Object.keys(changes).forEach(function(key){
+    var val=changes[key];
+    var oldVal=l[key]||'';
+    var icon=suFieldIcons[key]||'\u2022';
+    var label=suFieldLabels[key]||key;
+    var valStr=typeof val==='boolean'?(val?'Yes':'No'):String(val);
+
+    if(key==='moveToDeleted'&&val){
+      html+='<div class="su-change" style="border-color:rgba(239,68,68,.3)">'+
+        '<span class="su-change-icon">\U0001f5d1</span>'+
+        '<div><div class="su-change-field" style="color:#fca5a5">Move to Deleted</div>'+
+        '<div class="su-change-val" style="color:#fca5a5">Email bounced (not a warm lead)</div></div></div>';
+    } else if(key==='archiveSuggested'&&val){
+      html+='<div class="su-change" style="border-color:rgba(100,116,139,.3)">'+
+        '<span class="su-change-icon">\U0001f4c2</span>'+
+        '<div><div class="su-change-field" style="color:#94a3b8">Archive Suggested</div>'+
+        '<div class="su-change-val" style="color:#94a3b8">Lead said not interested</div></div></div>';
+    } else if(key!=='newLogEntry'){
+      html+='<div class="su-change">'+
+        '<span class="su-change-icon">'+icon+'</span>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="su-change-field">'+label+'</div>'+
+          (oldVal&&oldVal!==valStr?'<div class="su-change-old">'+esc(String(oldVal).substring(0,40))+'</div>':'')+
+          '<div class="su-change-val">'+esc(valStr.substring(0,80))+'</div>'+
+        '</div></div>';
+    } else {
+      html+='<div class="su-change" style="border-color:rgba(79,70,229,.2)">'+
+        '<span class="su-change-icon">\U0001f4cb</span>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="su-change-field" style="color:#6366f1">New Log Entry</div>'+
+          '<div class="su-change-val">'+esc(valStr.substring(0,100))+'</div>'+
+        '</div></div>';
+    }
+  });
+
+  changesDiv.innerHTML=html;
+}
+
+function applySmartUpdate(){
+  if(!suChanges||!suLead)return;
+  var t=today();
+  var id=suLead.id;
+  var changes=suChanges;
+
+  // Check bounce + warm lead logic
+  if(changes.moveToDeleted&&suLead.status==='Warm Lead'){
+    if(!confirm('This lead is a Warm Lead but email bounced. Still move to Deleted?'))return;
+  }
+
+  leads=leads.map(function(l){
+    if(String(l.id)!==String(id))return l;
+    var updated=Object.assign({},l);
+
+    if(changes.status)updated.status=changes.status;
+    if(changes.followUpDate)updated.followUpDate=changes.followUpDate;
+    if(changes.dealStage)updated.dealStage=changes.dealStage;
+    if(changes.city)updated.city=changes.city;
+    if(changes.servicesNeeded)updated.servicesNeeded=changes.servicesNeeded;
+    if(changes.notes)updated.notes=updated.notes?(updated.notes+' | '+changes.notes):changes.notes;
+
+    // Always add log entry
+    var logNote=changes.newLogEntry||'Smart Update applied';
+    var newLog={date:t,note:logNote,sender:''};
+    updated.outreachLog=(updated.outreachLog||[]).concat([newLog]);
+    updated.lastContacted=t;
+    updated.followUpCount=(updated.followUpCount||0)+1;
+
+    return updated;
+  });
+
+  var updated=leads.find(function(l){return String(l.id)===String(id);});
+
+  // Handle moveToDeleted
+  if(changes.moveToDeleted&&suLead.status!=='Warm Lead'&&suLead.status!=='Replied'){
+    leads=leads.filter(function(l){return String(l.id)!==String(id);});
+    deletedLeads.unshift(Object.assign({},suLead,{status:'Bounced',deletedDate:t}));
+    saveLoc();renderAll();
+    closeSmartUpdate();closeLp();
+    flash('Bounced lead moved to Deleted');
+    showBossCelebration('Updated & moved to Deleted');
+    return;
+  }
+
+  // Handle archiveSuggested
+  if(changes.archiveSuggested){
+    if(confirm('Lead said not interested. Archive "'+suLead.company+'"?')){
+      leads=leads.filter(function(l){return String(l.id)!==String(id);});
+      archivedLeads.unshift(Object.assign({},suLead,{archivedDate:t,archiveReason:'Not interested'}));
+      saveLoc();renderAll();
+      closeSmartUpdate();closeLp();
+      flash('Archived: '+suLead.company);
+      return;
+    }
+  }
+
+  saveLoc();renderAll();
+  if(updated){syncLead(updated);lpId=id;renderLp();}
+  closeSmartUpdate();
+  showBossCelebration(suLead.company);
+  flash('\u2713 Smart Update applied!');
+  suLead=null;suChanges=null;
+}
+
+function discardSmartUpdate(){
+  suChanges=null;
+  ge('su-result').classList.remove('show');
+  ge('su-changes').innerHTML='';
+  ge('su-input').value='';
+  ge('su-input').focus();
+}
+
+// Close on backdrop click
+// backdrop click - attached on open
+
+
+// Enter shortcut
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape')closeSmartUpdate();
+  if(e.key==='Enter'&&e.metaKey&&document.getElementById('su-modal').classList.contains('open'))runSmartUpdate();
+});
+
 // ── NICHE DATALIST ───────────────────────────────────
 function populateNicheList(){
   var dl=document.getElementById('niche-list');if(!dl)return;
@@ -3257,6 +3617,59 @@ function saveNewContact(){
   <button onclick="mobileReload()" id="mob-reload-btn" style="background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px">
     <span id="mob-reload-icon">🔄</span> Sync Latest
   </button>
+</div>
+
+
+<!-- SMART UPDATE MODAL -->
+<div id="su-modal">
+  <div id="su-sheet">
+    <div class="su-header">
+      <div class="su-title">
+        <span style="font-size:18px">⚡</span>
+        Smart Update
+        <span class="su-badge" id="su-lead-name">Lead</span>
+      </div>
+      <button onclick="closeSmartUpdate()" style="background:none;border:none;color:#475569;cursor:pointer;font-size:20px;padding:0">&#10005;</button>
+    </div>
+    <div class="su-body">
+      <textarea class="su-textarea" id="su-input" placeholder="Paste anything here...
+
+Examples:
+• Kyle confirmed Phoenix and Austin, sending invoice Monday
+• Jordan replied — loves the sample, wants 50 contacts per state  
+• Email bounced for brian@company.com
+• Out of office until April 2nd
+• Not interested, remove from list"></textarea>
+      <div class="su-hints">
+        <span class="su-hint" onclick="suFill(this)">✅ Replied positively</span>
+        <span class="su-hint" onclick="suFill(this)">📧 Email bounced</span>
+        <span class="su-hint" onclick="suFill(this)">🔥 Wants to proceed</span>
+        <span class="su-hint" onclick="suFill(this)">💤 Out of office</span>
+        <span class="su-hint" onclick="suFill(this)">❌ Not interested</span>
+        <span class="su-hint" onclick="suFill(this)">📦 Sample requested</span>
+      </div>
+      <div class="su-actions">
+        <button class="su-send" id="su-send-btn" onclick="runSmartUpdate()">
+          <span id="su-send-icon">⚡</span>
+          <span id="su-send-txt">Analyse & Update</span>
+        </button>
+        <button class="su-cancel" onclick="closeSmartUpdate()">Cancel</button>
+      </div>
+    </div>
+    <div class="su-processing" id="su-processing">
+      <div style="display:flex;gap:5px;align-items:center">
+        <div class="su-typing-dot"></div>
+        <div class="su-typing-dot"></div>
+        <div class="su-typing-dot"></div>
+      </div>
+      <span style="font-size:12px;color:#475569">AI is reading the context...</span>
+    </div>
+    <div class="su-result" id="su-result">
+      <div class="su-changes" id="su-changes"></div>
+      <button class="su-apply" onclick="applySmartUpdate()">&#10003; Apply All Changes</button>
+      <button class="su-discard" onclick="discardSmartUpdate()">Discard</button>
+    </div>
+  </div>
 </div>
 
 </body>
