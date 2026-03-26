@@ -2804,7 +2804,7 @@ function runSmartUpdate(){
   fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+key,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.1,maxOutputTokens:600}})
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.1,maxOutputTokens:1500}})
   })
   .then(function(r){return r.json();})
   .then(function(d){
@@ -2816,12 +2816,38 @@ function runSmartUpdate(){
     var raw='';
     try{raw=d.candidates[0].content.parts[0].text;}catch(e){}
     raw=raw.replace(/```json|```/g,'').trim();
+    // Try to extract JSON even if truncated
     try{
+      // Find first { and last valid }
+      var start=raw.indexOf('{');
+      var end=raw.lastIndexOf('}');
+      if(start>=0&&end>start){
+        raw=raw.substring(start,end+1);
+      }
       var changes=JSON.parse(raw);
       suChanges=changes;
       showSuChanges(changes,l);
     }catch(e){
-      showSuError('Could not parse. Try rephrasing. Got: '+raw.substring(0,100));
+      // Try to build partial object from what we got
+      try{
+        var partial={};
+        var statusM=raw.match(/"status"\s*:\s*"([^"]+)"/);
+        var fuM=raw.match(/"followUpDate"\s*:\s*"([^"]+)"/);
+        var logM=raw.match(/"newLogEntry"\s*:\s*"([^"]+)"/);
+        var notesM=raw.match(/"notes"\s*:\s*"([^"]+)"/);
+        var stageM=raw.match(/"dealStage"\s*:\s*"([^"]+)"/);
+        if(statusM)partial.status=statusM[1];
+        if(fuM)partial.followUpDate=fuM[1];
+        if(logM)partial.newLogEntry=logM[1];
+        if(notesM)partial.notes=notesM[1];
+        if(stageM)partial.dealStage=stageM[1];
+        if(Object.keys(partial).length>0){
+          suChanges=partial;
+          showSuChanges(partial,l);
+          return;
+        }
+      }catch(e2){}
+      showSuError('Could not parse response. Try again or use simpler text.');
     }
   })
   .catch(function(err){
