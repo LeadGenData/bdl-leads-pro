@@ -45,76 +45,45 @@ input,select,textarea,button{font-family:inherit;font-size:13px;outline:none}
 #su-sheet{width:100%;max-width:520px;background:#0a0f1a;border-radius:20px 20px 0 0;border:1px solid #1e293b;animation:fup .3s ease}
 </style>
 
-
-  
 </head>
-<body>
+<body class="bg-black text-slate-200">
 
-<div id="load" class="h"><div class="spin"></div><p id="ltxt">Loading…</p></div>
+<div id="load" class="h"><div class="spin"></div><p id="ltxt" style="margin-top:10px;font-size:11px;color:var(--text3)">LOADING...</p></div>
 
 <div id="login">
   <div class="lcard">
-
-    <!-- Logo -->
     <div style="position:relative;width:72px;height:72px;margin:0 auto 20px">
-      <!-- orbit ring -->
       <div style="position:absolute;inset:0;border-radius:50%;border:1.5px solid rgba(255,106,0,.18)"></div>
-      <!-- orbiting dot 1 -->
-      <div style="position:absolute;width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#ff8c38,#e85000);top:calc(50% - 4px);left:calc(50% - 4px);box-shadow:0 0 12px 4px rgba(255,106,0,.9);animation:orb-spin 2.8s linear infinite"></div>
-      <!-- orbiting dot 2 -->
-      <div style="position:absolute;width:5px;height:5px;border-radius:50%;background:#ff6a00;top:calc(50% - 2.5px);left:calc(50% - 2.5px);opacity:.5;animation:orb-spin 2.8s linear infinite;animation-delay:-1.4s"></div>
-      <!-- core box -->
+      <div style="position:absolute;width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#ff8c38,#e85000);top:calc(50% - 4px);left:calc(50% - 4px);box-shadow:0 0 12px 4px rgba(255,106,0,.9);animation:spin 2.8s linear infinite"></div>
       <div style="position:absolute;inset:11px;border-radius:12px;background:#000;border:1px solid rgba(255,106,0,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;z-index:2">
-        <span style="font-size:17px;font-weight:900;color:#fff;font-family:system-ui;line-height:1">B</span>
-        <span style="font-size:7px;font-weight:800;color:var(--orange);letter-spacing:2px;font-family:system-ui;line-height:1">DL</span>
+        <span style="font-size:17px;font-weight:900;color:#fff;line-height:1">B</span>
+        <span style="font-size:7px;font-weight:800;color:var(--orange);letter-spacing:2px;line-height:1">DL</span>
       </div>
     </div>
-
-    <h1 style="font-size:22px;font-weight:800;margin-bottom:4px;letter-spacing:-.4px">
-      BDL Leads <span style="color:var(--orange3);font-size:13px;font-weight:500;letter-spacing:0">Pro</span>
-    </h1>
+    <h1 style="font-size:22px;font-weight:800;margin-bottom:4px">BDL Leads <span style="color:var(--orange3);font-size:13px">Pro</span></h1>
     <p style="color:var(--text3);font-size:12px;margin-bottom:24px">B2B Sales Tracker · Sheets Sync</p>
-
-    <input id="lu" placeholder="Username" onkeydown="if(event.key==='Enter')login()">
-    <input id="lpw" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')login()">
-    <div id="lerr" style="color:#fca5a5;font-size:12px;margin-bottom:8px;text-align:left" class="h"></div>
-    <button class="lbtn" onclick="login()">Sign In →</button>
-    <div id="lerr" style="color:#fca5a5;font-size:12px;margin-top:8px;text-align:left" class="h"></div>
+    <input id="lu" placeholder="Username" onkeydown="if(event.key==='Enter')login()" style="width:100%;padding:12px;background:#111;border:1px solid #1f1f1f;border-radius:8px;color:#fff;margin-bottom:8px">
+    <input id="lpw" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')login()" style="width:100%;padding:12px;background:#111;border:1px solid #1f1f1f;border-radius:8px;color:#fff;margin-bottom:12px">
+    <button class="tab on" onclick="login()" style="width:100%;padding:12px;font-weight:800">Sign In →</button>
+    <div id="lerr" style="color:#fca5a5;font-size:12px;margin-top:8px" class="h"></div>
   </div>
 </div>
 
 <div id="app" class="h">
   <div class="hdr">
     <div class="brand">
-      <div class="logo">
-        <div class="logo-ring"></div>
-        <div class="logo-inner"><div class="logo-b">B</div><div class="logo-dl">DL</div></div>
-      </div>
-      <div class="brand-txt">
-        <h1>BDL Leads <em>Pro</em></h1>
-        <p id="lcount"></p>
-      </div>
+      <div class="logo"><div class="logo-ring"></div><div class="logo-inner"><b>B</b><small>DL</small></div></div>
+      <div class="brand-txt"><h1>BDL Leads <em>Pro</em></h1><p id="lcount"></p></div>
     </div>
     <div class="hacts">
-      
       <div class="syns"><span id="sdot"></span><span id="stxt">Ready</span></div>
-      <span id="fmsg" class="h"></span>
-      <span id="ulbl"></span>
-      <button class="hb hb-o" onclick="copyForClaude()" title="Copy pipeline summary to paste into Claude.ai">📋 Copy for Claude</button>
+      <button class="hb hb-o" onclick="copyForClaude()">📋 Summary</button>
       <button class="hb hb-g" onclick="reloadSheets()">🔄 Reload</button>
-      <button class="hb hb-g" onclick="exportCSV()" title="Download all leads as CSV">⬇️ CSV</button>
-      <button class="hb" onclick="toggleSenderPanel()" title="Manage sender emails" style="background:rgba(100,116,139,.1);color:#94a3b8;border:1px solid #1e293b">⚙️ Senders</button>
       <button class="hb hb-o" onclick="syncAll()">☁️ Sync All</button>
-      <button class="hb hb-g" onclick="logout()">Sign Out</button>
-      <button class="hb" style="background:rgba(16,185,129,.1);color:#34d399;border:1px solid rgba(16,185,129,.2)" onclick="runHealthCheck()" title="App Health Check">🩺 Health</button>
       <div class="ai-btn-wrap">
-        <div class="ai-tip">AI Assistant</div>
-        <button id="ai-magic-btn" onclick="toggleAI()" title="AI Lead Assistant">
-          <span class="ai-plane">✈</span>
-          <span class="ai-lbl">AI</span>
-          <span class="ai-dots"><span class="ai-dot"></span><span class="ai-dot"></span><span class="ai-dot"></span></span>
-        </button>
+        <button id="ai-magic-btn" onclick="toggleAI()"><span class="ai-plane">✈</span><span class="ai-lbl">AI</span></button>
       </div>
+      <button class="hb" onclick="logout()" style="background:rgba(239,68,68,.1);color:#ef4444;border:none">✕</button>
     </div>
   </div>
 
@@ -124,84 +93,34 @@ input,select,textarea,button{font-family:inherit;font-size:13px;outline:none}
       <div class="tabs">
         <button class="tab on" onclick="stab('leads',this)">📋 Leads</button>
         <button class="tab" onclick="stab('clients',this)">🏆 Clients</button>
-        <button class="tab" onclick="stab('dashboard',this)">📊 Dashboard</button>
-        <button class="tab" id="del-tab-btn" onclick="stab('deleted',this)">Deleted</button>
-        <button class="tab" id="arc-tab-btn" onclick="stab('archived',this)">&#128190; Archived</button>
+        <button class="tab" onclick="stab('dashboard',this)">📊 Stats</button>
       </div>
     </div>
 
     <div id="tab-leads">
-      <div id="sender-settings-panel" style="display:none;background:#0d1424;border:1px solid #1e293b;border-radius:10px;padding:14px;margin-bottom:10px;">
-        <div id="sender-settings"></div>
-      </div>
-      <div id="alerts"></div>
       <div class="filters">
-        <input id="srch" placeholder="🔍 Search company, contact, #…" oninput="rl()">
-        <select id="fst" onchange="rl()">
-          <option value="All">All Status</option>
-          <option>Pending</option><option>Sent</option><option>Warm Lead</option><option>Bounced</option><option>Replied</option>
-        </select>
-        <input id="fni" list="niche-list" placeholder="All Niches" oninput="rl()" style="background:#111;border:1px solid #1f1f1f;border-radius:var(--rx);padding:7px 11px;color:var(--text);outline:none;width:120px">
-        <select id="fpri" onchange="rl()">
-          <option value="">All Leads</option>
-          <option value="overdue">🔥 Overdue</option>
-          <option value="today">⏰ Today</option>
-          <option value="warm">♨️ Warm Leads</option>
-          <option value="replied">💬 Replied</option>
-          <option value="dm">✅ Decision Makers</option>
-          <option value="nodm">❓ No DM Confirmed</option>
-        </select>
-        <select id="fsender" onchange="rl()" style="max-width:160px">
-          <option value="">All Senders</option>
-          <option value="skinnerdonald">Skinner</option>
-          <option value="michaelbrauns">Michael</option>
-        </select>
+        <input id="srch" placeholder="🔍 Search..." oninput="rl()">
+        <select id="fst" onchange="rl()"><option value="All">All Status</option><option>Pending</option><option>Sent</option><option>Warm Lead</option></select>
+        <select id="fpri" onchange="rl()"><option value="">All Priority</option><option value="overdue">🔥 Overdue</option><option value="warm">♨️ Warm</option></select>
         <button class="addb" onclick="togaf()">+ Add Lead</button>
-        <button class="addb" style="background:linear-gradient(135deg,#3b82f6,#6366f1);margin-left:6px" onclick="trigImport()">⬆ Import CSV</button>
-        <button class="addb" style="background:linear-gradient(135deg,#0ea5e9,#6366f1);margin-left:6px" onclick="showQuickImport()">⚡ Quick Emails</button>
-        <input type="file" id="csvFileIn" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleImport(event)">
       </div>
-      <div id="afarea"></div>
       <div id="larea"></div>
-      <p id="lftr" style="text-align:center;color:#222;font-size:11px;margin-top:10px"></p>
     </div>
-
     <div id="tab-clients" class="h"><div id="carea"></div></div>
     <div id="tab-dashboard" class="h"><div id="darea"></div></div>
-    <div id="tab-deleted" class="h"><div id="del-area"></div></div>
-    <div id="tab-archived" class="h"><div id="arc-area"></div></div>
   </div>
 </div>
 
-<!-- LEAD DETAIL PANEL -->
 <div id="lp">
   <div class="lp-hdr">
-    <div class="lp-hdr-l">
-      <div class="lp-sub">Lead Details</div>
-      <div class="lp-name" id="lp-name">—</div>
-    </div>
+    <div class="lp-hdr-l"><div class="lp-sub">Lead Details</div><div class="lp-name" id="lp-name">—</div></div>
     <button class="lp-close" onclick="closeLp()">✕</button>
   </div>
   <div class="lp-scroll" id="lp-scroll"></div>
   <div class="lp-foot">
     <button class="lp-fu-btn" onclick="lpFU()">+1 Follow-up</button>
-    <button style="flex:1;background:linear-gradient(135deg,rgba(79,70,229,.2),rgba(124,58,237,.2));color:#a78bfa;border:1px solid rgba(139,92,246,.3);border-radius:8px;padding:10px;font-size:12px;font-weight:800;cursor:pointer;transition:all .15s" onclick="openSmartUpdate()" title="Smart Update — paste any text to auto-update this lead">&#9889; Smart Update</button>
-    <button class="lp-save" onclick="lpSave()">💾 Save Changes</button>
-    <button class="lp-del" onclick="lpDel()" title="Delete">🗑</button>
-    <button class="lp-del" style="background:rgba(100,116,139,.08);color:#64748b;border-color:rgba(100,116,139,.2)" onclick="lpArchive()" title="Archive">📂</button>
-  </div>
-</div>
-
-
-<div id="cvmodal" class="modal-ov h">
-  <div class="modal">
-    <div style="font-size:30px;margin-bottom:8px">🏆</div>
-    <h3>Convert to Client?</h3>
-    <p id="cvname"></p>
-    <div class="mbtns">
-      <button class="myes" onclick="doconv()">Yes, Convert!</button>
-      <button class="mno" onclick="closemod()">Cancel</button>
-    </div>
+    <button class="lp-save" onclick="lpSave()">💾 Save</button>
+    <button class="lp-del" onclick="lpDel()">🗑</button>
   </div>
 </div>
 
