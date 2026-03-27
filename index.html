@@ -124,6 +124,54 @@ input,select,textarea,button{font-family:inherit;font-size:13px;outline:none}
   </div>
 </div>
 
+  <div id="su-modal" onclick="if(event.target==this)closeSmartUpdate()">
+  <div id="su-sheet">
+    <div style="padding:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+        <h3 style="font-size:16px;font-weight:800;color:#fff">⚡ Smart Update</h3>
+        <button onclick="closeSmartUpdate()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px">✕</button>
+      </div>
+      
+      <textarea id="su-input" placeholder="Paste email context or notes here... AI will detect status and sentiment." 
+                style="width:100%;height:120px;background:#000;border:1px solid #1e293b;border-radius:12px;padding:12px;color:#fff;font-size:13px;resize:none;margin-bottom:12px"></textarea>
+      
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px">
+        <span class="su-hint" onclick="suFill(this)" style="background:#1e293b;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;color:var(--text2)">✅ Replied</span>
+        <span class="su-hint" onclick="suFill(this)" style="background:#1e293b;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;color:var(--text2)">📧 Bounced</span>
+        <span class="su-hint" onclick="suFill(this)" style="background:#1e293b;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;color:var(--text2)">🔥 Hot Lead</span>
+      </div>
+
+      <button id="su-send-btn" onclick="runSmartUpdate()" 
+              style="width:100%;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:10px;padding:14px;font-weight:800;cursor:pointer">
+        Analyse & Update Lead
+      </button>
+    </div>
+    
+    <div id="su-processing" class="h" style="padding:20px;text-align:center">
+      <div class="spin" style="margin:0 auto 10px;width:24px;height:24px"></div>
+      <p style="color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:1px">AI is reading context...</p>
+    </div>
+  </div>
+</div>
+
+<div id="cvmodal" class="overlay h">
+  <div class="modal">
+    <div style="font-size:32px;margin-bottom:12px">🏆</div>
+    <h3 style="color:#fff;margin-bottom:8px">Convert to Client?</h3>
+    <p id="cvname" style="color:var(--text3);font-size:13px;margin-bottom:24px"></p>
+    <div style="display:flex;gap:10px">
+      <button onclick="doconv()" style="flex:1;padding:12px;background:var(--green);border:none;border-radius:8px;color:#000;font-weight:700;cursor:pointer">Yes, Convert!</button>
+      <button onclick="closemod()" style="flex:1;padding:12px;background:#1e293b;border:none;border-radius:8px;color:#fff;cursor:pointer">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="boss-popup">
+  <div style="font-size:40px;margin-bottom:10px">💰</div>
+  <h2 style="color:#fff;font-size:22px;margin-bottom:4px">BIG WIN!</h2>
+  <p style="color:#94a3b8;font-size:14px">Payment confirmed. Keep it up!</p>
+</div>
+
 <script>
 const SHEET_URL='https://script.google.com/macros/s/AKfycbxE1FoKS3Jw8cxGMfEuX7OCdDIehs5YDbQxPMWQ-47wvwJe0W40syMKOK7E1ClY2UQ/exec';
 // Credentials validated server-side via Google Sheets
