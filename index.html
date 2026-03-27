@@ -18,65 +18,41 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 input,select,textarea,button{font-family:inherit;font-size:13px;outline:none}
 .h{display:none!important}
 
-/* --- CORE INTERFACE --- */
-#login{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at 50% 0%,rgba(255,106,0,.06),#000 70%)}
-.lcard{background:#0a0a0a;border:1px solid #1f1f1f;border-radius:20px;padding:36px 32px;width:320px;text-align:center;animation:fup .4s ease both}
-#load{position:fixed;inset:0;background:rgba(0,0,0,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:400}
-.spin{width:38px;height:38px;border:3px solid #111;border-top-color:var(--orange);border-radius:50%;animation:rotate 0.7s linear infinite}
-.hdr{display:flex;justify-content:space-between;align-items:center;padding:12px 22px;background:#000;border-bottom:1px solid #1a1a1a;position:sticky;top:0;z-index:100}
-
 /* --- ANIMATIONS --- */
 @keyframes rotate{to{transform:rotate(360deg)}}
 @keyframes fup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-
-/* THE ORBIT LOGIC */
 @keyframes orbit {
   from { transform: rotate(0deg) translateX(32px) rotate(0deg); }
   to { transform: rotate(360deg) translateX(32px) rotate(-360deg); }
 }
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 10px rgba(255,106,0,0.1); }
+  0%, 100% { box-shadow: 0 0 10px rgba(255,106,0,0.1); border-color: rgba(255,106,0,0.2); }
   50% { box-shadow: 0 0 20px rgba(255,106,0,0.4); border-color: rgba(255,106,0,0.5); }
 }
+
+/* --- INTERFACE --- */
+#login{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at 50% 0%,rgba(255,106,0,.06),#000 70%)}
+.lcard{background:#0a0a0a;border:1px solid #1f1f1f;border-radius:20px;padding:36px 32px;width:320px;text-align:center;animation:fup .4s ease both}
+#load{position:fixed;inset:0;background:rgba(0,0,0,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:400}
+.spin{width:38px;height:38px;border:3px solid #111;border-top-color:var(--orange);border-radius:50%;animation:rotate .7s linear infinite}
+.hdr{display:flex;justify-content:space-between;align-items:center;padding:12px 22px;background:#000;border-bottom:1px solid #1a1a1a;position:sticky;top:0;z-index:100}
 
 /* --- BUTTONS & TABS --- */
 .tab{padding:7px 18px;border-radius:8px;border:none;background:transparent;color:var(--text3);font-weight:700;cursor:pointer;transition:all .18s}
 .tab.on{background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;box-shadow:0 4px 16px rgba(255,106,0,.25)}
 
 /* --- MODALS --- */
-#su-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9997;backdrop-filter:blur(8px);align-items:flex-end;justify-content:center}
+#su-modal, .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9997;backdrop-filter:blur(8px);align-items:center;justify-content:center}
+#su-modal{align-items:flex-end} /* Smart update stays at bottom */
 #su-sheet{width:100%;max-width:520px;background:#0a0f1a;border-radius:20px 20px 0 0;border:1px solid #1e293b;animation:fup .3s ease}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:10000;backdrop-filter:blur(4px)}
 .modal{background:#0a0a0a;border:1px solid #1f1f1f;padding:30px;border-radius:20px;width:300px;text-align:center}
+
+/* BOSS POPUP */
+#boss-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#000;border:2px solid var(--orange);padding:40px;border-radius:30px;text-align:center;z-index:20000;display:none}
 </style>
-
-/* --- ORBITING ANIMATION --- */
-@keyframes spin {
-  from { transform: rotate(0deg) translateX(32px) rotate(0deg); }
-  to { transform: rotate(360deg) translateX(32px) rotate(-360deg); }
-}
-
-/* Add this if you want the "fading pulse" on the core box */
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 10px rgba(255,106,0,0.2); }
-  50% { box-shadow: 0 0 20px rgba(255,106,0,0.5); }
-}
-
-<div style="position:relative;width:72px;height:72px;margin:0 auto 20px">
-  <div style="position:absolute;inset:0;border-radius:50%;border:1.5px solid rgba(255,106,0,.18)"></div>
-  
-  <div style="position:absolute;width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#ff8c38,#e85000);top:calc(50% - 4px);left:calc(50% - 4px);box-shadow:0 0 12px 4px rgba(255,106,0,.9);animation:spin 2.8s linear infinite"></div>
-  
-  <div style="position:absolute;width:5px;height:5px;border-radius:50%;background:#ff6a00;top:calc(50% - 2.5px);left:calc(50% - 2.5px);opacity:.5;animation:spin 4s linear infinite reverse"></div>
-  
-  <div style="position:absolute;inset:11px;border-radius:12px;background:#000;border:1px solid rgba(255,106,0,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;z-index:2;animation:pulse-glow 3s ease-in-out infinite">
-    <span style="font-size:17px;font-weight:900;color:#fff;line-height:1">B</span>
-    <span style="font-size:7px;font-weight:800;color:var(--orange);letter-spacing:2px;line-height:1">DL</span>
-  </div>
-</div>
-  
 </head>
-<body class="bg-black text-slate-200">
+
+<body>
 
 <div id="load" class="h"><div class="spin"></div><p id="ltxt" style="margin-top:10px;font-size:11px;color:var(--text3)">LOADING...</p></div>
 
@@ -84,8 +60,9 @@ input,select,textarea,button{font-family:inherit;font-size:13px;outline:none}
   <div class="lcard">
     <div style="position:relative;width:72px;height:72px;margin:0 auto 20px">
       <div style="position:absolute;inset:0;border-radius:50%;border:1.5px solid rgba(255,106,0,.18)"></div>
-      <div style="position:absolute;width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#ff8c38,#e85000);top:calc(50% - 4px);left:calc(50% - 4px);box-shadow:0 0 12px 4px rgba(255,106,0,.9);animation:spin 2.8s linear infinite"></div>
-      <div style="position:absolute;inset:11px;border-radius:12px;background:#000;border:1px solid rgba(255,106,0,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;z-index:2">
+      <div style="position:absolute;width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#ff8c38,#e85000);top:calc(50% - 4px);left:calc(50% - 4px);box-shadow:0 0 12px 4px rgba(255,106,0,.9);animation:orbit 2.8s linear infinite"></div>
+      <div style="position:absolute;width:5px;height:5px;border-radius:50%;background:#ff6a00;top:calc(50% - 2.5px);left:calc(50% - 2.5px);opacity:.5;animation:orbit 4s linear infinite reverse"></div>
+      <div style="position:absolute;inset:11px;border-radius:12px;background:#000;border:1px solid rgba(255,106,0,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;z-index:2;animation:pulse-glow 3s ease-in-out infinite">
         <span style="font-size:17px;font-weight:900;color:#fff;line-height:1">B</span>
         <span style="font-size:7px;font-weight:800;color:var(--orange);letter-spacing:2px;line-height:1">DL</span>
       </div>
@@ -101,26 +78,20 @@ input,select,textarea,button{font-family:inherit;font-size:13px;outline:none}
 
 <div id="app" class="h">
   <div class="hdr">
-    <div class="brand">
-      <div class="logo"><div class="logo-ring"></div><div class="logo-inner"><b>B</b><small>DL</small></div></div>
-      <div class="brand-txt"><h1>BDL Leads <em>Pro</em></h1><p id="lcount"></p></div>
+    <div class="brand" style="display:flex;align-items:center;gap:10px">
+      <div style="width:32px;height:32px;background:var(--orange);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#000">B</div>
+      <div class="brand-txt"><h1 style="font-size:15px">BDL Leads <em>Pro</em></h1><p id="lcount" style="font-size:10px;color:var(--text3)"></p></div>
     </div>
-    <div class="hacts">
-      <div class="syns"><span id="sdot"></span><span id="stxt">Ready</span></div>
-      <button class="hb hb-o" onclick="copyForClaude()">📋 Summary</button>
-      <button class="hb hb-g" onclick="reloadSheets()">🔄 Reload</button>
-      <button class="hb hb-o" onclick="syncAll()">☁️ Sync All</button>
-      <div class="ai-btn-wrap">
-        <button id="ai-magic-btn" onclick="toggleAI()"><span class="ai-plane">✈</span><span class="ai-lbl">AI</span></button>
-      </div>
-      <button class="hb" onclick="logout()" style="background:rgba(239,68,68,.1);color:#ef4444;border:none">✕</button>
+    <div class="hacts" style="display:flex;gap:8px">
+      <button class="tab" onclick="reloadSheets()" style="background:#111;font-size:11px">🔄 Reload</button>
+      <button class="tab" onclick="logout()" style="background:rgba(239,68,68,.1);color:#ef4444;font-size:11px">✕</button>
     </div>
   </div>
 
-  <div class="main">
-    <div class="stats" id="scards"></div>
-    <div class="tabs-row">
-      <div class="tabs">
+  <div class="main" style="padding:15px">
+    <div id="scards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-bottom:20px"></div>
+    <div class="tabs-row" style="margin-bottom:15px">
+      <div class="tabs" style="display:flex;gap:5px;background:#0a0a0a;padding:4px;border-radius:10px">
         <button class="tab on" onclick="stab('leads',this)">📋 Leads</button>
         <button class="tab" onclick="stab('clients',this)">🏆 Clients</button>
         <button class="tab" onclick="stab('dashboard',this)">📊 Stats</button>
@@ -128,11 +99,9 @@ input,select,textarea,button{font-family:inherit;font-size:13px;outline:none}
     </div>
 
     <div id="tab-leads">
-      <div class="filters">
-        <input id="srch" placeholder="🔍 Search..." oninput="rl()">
-        <select id="fst" onchange="rl()"><option value="All">All Status</option><option>Pending</option><option>Sent</option><option>Warm Lead</option></select>
-        <select id="fpri" onchange="rl()"><option value="">All Priority</option><option value="overdue">🔥 Overdue</option><option value="warm">♨️ Warm</option></select>
-        <button class="addb" onclick="togaf()">+ Add Lead</button>
+      <div class="filters" style="display:flex;gap:8px;margin-bottom:15px">
+        <input id="srch" placeholder="🔍 Search..." oninput="rl()" style="flex:1;background:#111;border:1px solid #1f1f1f;padding:10px;border-radius:8px;color:#fff">
+        <button class="tab on" onclick="togaf()">+ Add</button>
       </div>
       <div id="larea"></div>
     </div>
@@ -141,67 +110,46 @@ input,select,textarea,button{font-family:inherit;font-size:13px;outline:none}
   </div>
 </div>
 
-<div id="lp">
-  <div class="lp-hdr">
-    <div class="lp-hdr-l"><div class="lp-sub">Lead Details</div><div class="lp-name" id="lp-name">—</div></div>
-    <button class="lp-close" onclick="closeLp()">✕</button>
+<div id="lp" style="position:fixed;inset:0;background:#000;z-index:9000;display:none;flex-direction:column">
+  <div style="padding:20px;border-bottom:1px solid #1f1f1f;display:flex;justify-content:space-between">
+    <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Lead Details</div><div id="lp-name" style="font-size:18px;font-weight:800">—</div></div>
+    <button onclick="closeLp()" style="background:none;border:none;color:#fff;font-size:20px">✕</button>
   </div>
-  <div class="lp-scroll" id="lp-scroll"></div>
-  <div class="lp-foot">
-    <button class="lp-fu-btn" onclick="lpFU()">+1 Follow-up</button>
-    <button class="lp-save" onclick="lpSave()">💾 Save</button>
-    <button class="lp-del" onclick="lpDel()">🗑</button>
+  <div id="lp-scroll" style="flex:1;overflow-y:auto;padding:20px"></div>
+  <div style="padding:20px;display:flex;gap:10px;border-top:1px solid #1f1f1f">
+    <button onclick="lpFU()" style="flex:1;padding:12px;background:#111;border-radius:8px;color:#fff">+1 Follow-up</button>
+    <button onclick="lpSave()" style="flex:1;padding:12px;background:var(--orange);border-radius:8px;color:#fff;font-weight:700">💾 Save</button>
   </div>
 </div>
 
-  <div id="su-modal" onclick="if(event.target==this)closeSmartUpdate()">
+<div id="su-modal" onclick="if(event.target==this)closeSmartUpdate()">
   <div id="su-sheet">
     <div style="padding:20px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
-        <h3 style="font-size:16px;font-weight:800;color:#fff">⚡ Smart Update</h3>
-        <button onclick="closeSmartUpdate()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px">✕</button>
+      <div style="display:flex;justify-content:space-between;margin-bottom:15px">
+        <h3 style="color:#fff">⚡ Smart Update</h3>
+        <button onclick="closeSmartUpdate()" style="background:none;border:none;color:var(--text3)">✕</button>
       </div>
-      
-      <textarea id="su-input" placeholder="Paste email context or notes here... AI will detect status and sentiment." 
-                style="width:100%;height:120px;background:#000;border:1px solid #1e293b;border-radius:12px;padding:12px;color:#fff;font-size:13px;resize:none;margin-bottom:12px"></textarea>
-      
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px">
-        <span class="su-hint" onclick="suFill(this)" style="background:#1e293b;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;color:var(--text2)">✅ Replied</span>
-        <span class="su-hint" onclick="suFill(this)" style="background:#1e293b;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;color:var(--text2)">📧 Bounced</span>
-        <span class="su-hint" onclick="suFill(this)" style="background:#1e293b;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;color:var(--text2)">🔥 Hot Lead</span>
-      </div>
-
-      <button id="su-send-btn" onclick="runSmartUpdate()" 
-              style="width:100%;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:10px;padding:14px;font-weight:800;cursor:pointer">
-        Analyse & Update Lead
-      </button>
-    </div>
-    
-    <div id="su-processing" class="h" style="padding:20px;text-align:center">
-      <div class="spin" style="margin:0 auto 10px;width:24px;height:24px"></div>
-      <p style="color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:1px">AI is reading context...</p>
+      <textarea id="su-input" placeholder="Paste context..." style="width:100%;height:100px;background:#000;border:1px solid #1e293b;border-radius:12px;padding:12px;color:#fff;margin-bottom:12px"></textarea>
+      <button onclick="runSmartUpdate()" style="width:100%;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:10px;padding:14px;font-weight:800">Analyse</button>
     </div>
   </div>
 </div>
 
-<div id="cvmodal" class="overlay h">
+<div id="cvmodal" class="overlay">
   <div class="modal">
     <div style="font-size:32px;margin-bottom:12px">🏆</div>
-    <h3 style="color:#fff;margin-bottom:8px">Convert to Client?</h3>
-    <p id="cvname" style="color:var(--text3);font-size:13px;margin-bottom:24px"></p>
+    <h3 style="color:#fff;margin-bottom:20px">Convert to Client?</h3>
     <div style="display:flex;gap:10px">
-      <button onclick="doconv()" style="flex:1;padding:12px;background:var(--green);border:none;border-radius:8px;color:#000;font-weight:700;cursor:pointer">Yes, Convert!</button>
-      <button onclick="closemod()" style="flex:1;padding:12px;background:#1e293b;border:none;border-radius:8px;color:#fff;cursor:pointer">Cancel</button>
+      <button onclick="doconv()" style="flex:1;padding:12px;background:var(--green);border-radius:8px;color:#000;font-weight:700">Yes</button>
+      <button onclick="closemod()" style="flex:1;padding:12px;background:#1e293b;border-radius:8px;color:#fff">No</button>
     </div>
   </div>
 </div>
 
 <div id="boss-popup">
   <div style="font-size:40px;margin-bottom:10px">💰</div>
-  <h2 style="color:#fff;font-size:22px;margin-bottom:4px">BIG WIN!</h2>
-  <p style="color:#94a3b8;font-size:14px">Payment confirmed. Keep it up!</p>
+  <h2 style="color:#fff">BIG WIN!</h2>
 </div>
-
 <script>
 const SHEET_URL='https://script.google.com/macros/s/AKfycbxE1FoKS3Jw8cxGMfEuX7OCdDIehs5YDbQxPMWQ-47wvwJe0W40syMKOK7E1ClY2UQ/exec';
 // Credentials validated server-side via Google Sheets
