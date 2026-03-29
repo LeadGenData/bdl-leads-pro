@@ -627,10 +627,10 @@ function togaf(){
         '<button style="background:none;border:none;color:#333;cursor:pointer;font-size:18px" onclick="togaf()">✕</button>'+
       '</div>'+
       '<div class="egrid">'+
-        '<div class="ef"><label>Company *</label><div style="display:flex;gap:6px"><input id="nc" placeholder="Company name" style="flex:1"><button type="button" id="research-btn" onclick="researchCompany()" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);border-radius:7px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">&#128269; Research</button></div></div>'+
+        '<div class="ef"><label>Company *</label><div style="display:flex;gap:6px"><input id="nc" placeholder="Company name" style="flex:1" onblur="autoFillNiche()"><button type="button" id="research-btn" onclick="researchCompany()" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);border-radius:7px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">&#128269; Research</button></div></div>'+
       '<div id="research-result-box" style="display:none;background:#0d1424;border:1px solid #1e293b;border-radius:10px;padding:12px 14px;margin-bottom:8px"></div>'+
         '<div class="ef"><label>Contact</label><input id="nct" placeholder="Name"></div>'+
-        '<div class="ef"><label>Email</label><input id="ne" placeholder="email@co.com"></div>'+
+        '<div class="ef"><label>Email</label><input id="ne" placeholder="email@co.com" onblur="autoFillNiche()"></div>'+
         '<div class="ef"><label>City</label><input id="ncity" placeholder="e.g. Chicago"></div>'+
         '<div class="ef"><label>State</label><input id="nstate" placeholder="e.g. IL"></div>'+
         '<div class="ef"><label>Niche</label><input id="nn" list="niche-list" placeholder="Type or select..." style="background:#111;border:1px solid #1e293b;border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:12px;width:100%;box-sizing:border-box;outline:none"></div>'+
@@ -1461,6 +1461,11 @@ function showQuickImport(){
   setTimeout(function(){if(ge('qi-emails'))ge('qi-emails').focus();},100);
 }
 
+function autoDetectNicheFromEmails(emails){
+  if(!emails||!emails.length)return null;
+  var combined=emails.join(' ');
+  return autoDetectNiche('',combined);
+}
 function runQuickImport(){
   var raw=(ge('qi-emails').value||'').trim();
   if(!raw){flash('Paste at least one email','bad');return;}
@@ -3165,6 +3170,57 @@ function renderKanban(){
   }).join('');
 
   area.innerHTML=summary+'<div class="kb-board">'+cols+'</div>';
+}
+
+
+// ── NICHE AUTO-DETECTION ───────────────────────────────
+var NICHE_KEYWORDS={
+  'Dental':['dental','dentist','orthodont','periodon','endodon','oral','tooth','teeth','dds','dmd','smile','implant','invisalign','braces','pacden','aspen dental','heartland','western dental','pacific dental'],
+  'Education':['school','edu','academy','university','college','teacher','learning','tutoring','curriculum','district','superintendent','principal','k-12','k12','preschool','montessori','charter','institute','study','classroom','stem'],
+  'Healthcare/Staffing':['health','hospital','medical','nurse','nursing','physician','clinic','staffing','medely','travel nurse','healthcare','allied','therapy','rehab','radiology','pharma','aonl','hospice','home health'],
+  'Healthcare/Senior Living':['senior','assisted','memory care','skilled nursing','retirement','elder','aged care','long term care','continuing care'],
+  'SaaS':['software','saas','tech','platform','app','cloud','api','crm','erp','analytics','automation','intelligence','ai','ml','data','digital','solutions','systems','io','inc','corp'],
+  'Real Estate/PropTech':['real estate','realty','property','proptech','landlord','tenant','hoa','apartment','multifamily','residential','commercial','reit','mortgage','lending','broker','mls','listing','rentals'],
+  'Junk Removal':['junk','removal','hauling','haul','cleanout','dumpster','trash','waste','debris','demo','demolition','rubbish','clutter','hoarding'],
+  'Property Services':['property manager','property management','maintenance','landscaping','lawn','cleaning','janitorial','pest control','hvac','plumbing','electrical','handyman'],
+  'Finance/Lending':['finance','lending','loan','mortgage','credit','bank','capital','invest','fund','wealth','insurance','accounting','cpa','tax','financial','advisory','asset'],
+  'Hospitality/Events':['hotel','restaurant','hospitality','event','catering','venue','resort','motel','inn','bar','cafe','food','beverage','wedding'],
+  'ERP/IT Consulting':['erp','consulting','it consulting','managed service','msp','sap','oracle','netsuite','microsoft','dynamics','implementation','integration'],
+  'Motivational':['motivat','speak','coach','keynote','leadership','personal development','training','workshop','seminar','author','podcast','influencer'],
+  'AI/Tech':['artificial intelligence','machine learning','openai','gpt','llm','nlp','computer vision','robotics','automation','neural','deep learning','chatbot'],
+  'Community':['church','nonprofit','ngo','foundation','charity','community','faith','ministry','association','coalition','advocacy']
+};
+
+function autoDetectNiche(company, email){
+  var text=(company+' '+(email||'')).toLowerCase();
+  var domain=email?email.split('@')[1]||'':'';
+  var search=text+' '+domain;
+
+  var best=null, bestScore=0;
+  Object.keys(NICHE_KEYWORDS).forEach(function(niche){
+    var score=0;
+    NICHE_KEYWORDS[niche].forEach(function(kw){
+      if(search.indexOf(kw)>=0){
+        score+=(kw.length>6?3:kw.length>3?2:1);
+      }
+    });
+    if(score>bestScore){bestScore=score;best=niche;}
+  });
+  return bestScore>=2?best:null;
+}
+
+function autoFillNiche(){
+  var co=(ge('nc')&&ge('nc').value)||'';
+  var em=(ge('ne')&&ge('ne').value)||'';
+  var nn=ge('nn');
+  if(!nn||nn.value)return; // dont overwrite if already set
+  var detected=autoDetectNiche(co,em);
+  if(detected){
+    nn.value=detected;
+    nn.style.borderColor='#22c55e';
+    setTimeout(function(){nn.style.borderColor='';},2000);
+    flash('Niche auto-detected: '+detected);
+  }
 }
 
 // ── NICHE DATALIST ───────────────────────────────────
