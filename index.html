@@ -223,6 +223,13 @@
 </div>
 
 <script>
+/*
+ * PERFORMANCE OPTIMIZATIONS:
+ * - login() merge algorithm: O(n²) → O(n) using Maps instead of nested loops
+ * - Auto-sync deferred to background after UI loads (prevents login blocking)
+ * - rl() no longer calls rs()/ra() redundantly (renderAll() handles it)
+ * - Login UI delay reduced: 500ms → 200ms for faster perceived performance
+ */
 const SHEET_URL=atob('aHR0cHM6Ly9zY3JpcHQuZ29vZ2xlLmNvbS9tYWNyb3Mvcy9BS2Z5Y2J4RTFGb0tTM0p3OGN4R01mRXVYN09DZERJZWhzNVlEYlF4UE1XUS00N3d2d0plMFc0MHN5TUtPSzdFMUNsWTJVUS9leGVj');
 // Credentials validated server-side via Google Sheets
 const SC={'Warm Lead':'#ff6a00','Sent':'#3b82f6','Pending':'#eab308','Bounced':'#ef4444','Replied':'#a855f7'};
@@ -388,28 +395,33 @@ function login(){
     }
     who=data.name||u;
     ge('ltxt').textContent='Loading your pipeline…';
-    // Merge Sheets + localStorage — keep whichever is more up to date per lead
+    // Merge Sheets + localStorage — keep whichever is more up to date per lead (OPTIMIZED O(n))
     var sheetLeads=normLeads(data.leads||[]);
     var loc=loadLoc();
     var localLeads=normLeads(loc.leads||[]);
     if(sheetLeads.length>0&&localLeads.length>0){
       var localMap={};
       localLeads.forEach(function(l){localMap[String(l.id)]=l;});
-      leads=sheetLeads.map(function(sl){
+      var sheetMap={};
+      sheetLeads.forEach(function(l){sheetMap[String(l.id)]=l;});
+      var mergedMap={};
+      // Process sheet leads
+      sheetLeads.forEach(function(sl){
         var ll=localMap[String(sl.id)];
-        if(!ll)return sl;
+        if(!ll){mergedMap[String(sl.id)]=sl;return;}
         var slLog=(sl.outreachLog||[]).length;
         var llLog=(ll.outreachLog||[]).length;
-        if(llLog>slLog)return ll; // local has more logs — local wins
-        if(slLog>llLog)return sl; // sheet has more logs — sheet wins
-        // Same log count — pick whichever was contacted more recently
+        if(llLog>slLog){mergedMap[String(sl.id)]=ll;return;}
+        if(slLog>llLog){mergedMap[String(sl.id)]=sl;return;}
         var slDate=(sl.lastContacted||sl.followUpDate||'');
         var llDate=(ll.lastContacted||ll.followUpDate||'');
-        return llDate>=slDate?ll:sl;
+        mergedMap[String(sl.id)]=llDate>=slDate?ll:sl;
       });
+      // Add local-only leads
       localLeads.forEach(function(ll){
-        if(!leads.find(function(x){return String(x.id)===String(ll.id);}))leads.push(ll);
+        if(!sheetMap[String(ll.id)])mergedMap[String(ll.id)]=ll;
       });
+      leads=Object.values(mergedMap);
     } else if(sheetLeads.length>0){
       leads=sheetLeads;
     } else if(localLeads.length>0){
@@ -417,7 +429,7 @@ function login(){
     }
     clients=data.clients||loc.clients||[];deletedLeads=data.deletedLeads||loc.deletedLeads||[];archivedLeads=data.archivedLeads||loc.archivedLeads||[];
     saveLoc();
-    // Auto-push leads that are ahead of Sheets back up (more logs OR updated followUpDate/lastContacted)
+    // Auto-push leads that are ahead of Sheets back up (deferred to background)
     var toSync=sheetLeads.filter(function(sl){
       var ll=leads.find(function(x){return String(x.id)===String(sl.id);});
       if(!ll)return false;
@@ -426,8 +438,10 @@ function login(){
       if(ll.lastContacted!==sl.lastContacted)return true;
       return false;
     });
-    if(toSync.length){var si=0;(function doSync(){if(si>=toSync.length)return;syncLead(toSync[si]);si++;setTimeout(doSync,150);})();}
-    loadSenders(data.senders||[]);setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();setTimeout(checkReminders,2000);setTimeout(runAutoArchive,3000);setTimeout(checkReEngagement,4000);initSwipe();},500);
+    loadSenders(data.senders||[]);setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();setTimeout(checkReminders,2000);setTimeout(runAutoArchive,3000);setTimeout(checkReEngagement,4000);initSwipe();
+      // Background sync AFTER UI loads
+      if(toSync.length){ge('sdot').style.background='#f59e0b';ge('stxt').textContent='Syncing '+toSync.length+'…';var si=0;(function doSync(){if(si>=toSync.length){ge('sdot').style.background='#22c55e';ge('stxt').textContent='Ready';return;}syncLead(toSync[si]);si++;setTimeout(doSync,150);})();}
+    },200);
   })
   .catch(function(){
     // Fallback to localStorage if Sheets unreachable
@@ -438,7 +452,7 @@ function login(){
       who=u;
     } else {who=u;}
     leads=loc.leads||[];clients=loc.clients||[];deletedLeads=loc.deletedLeads||[];archivedLeads=loc.archivedLeads||[];loadSenders();
-    setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();setTimeout(checkReminders,2000);setTimeout(runAutoArchive,3000);setTimeout(checkReEngagement,4000);initSwipe();},500);
+    setTimeout(function(){ge('load').classList.add('h');ge('app').classList.remove('h');ge('ulbl').textContent='👤 '+who;initNF();renderAll();startClock();setTimeout(checkReminders,2000);setTimeout(runAutoArchive,3000);setTimeout(checkReEngagement,4000);initSwipe();},200);
   });
 }
 function logout(){ge('app').classList.add('h');ge('login').classList.remove('h');ge('lu').value='';ge('lpw').value='';leads=[];clients=[];who='';closeLp();stopClock();}
@@ -658,7 +672,7 @@ var nl={id:'bdl_'+nextBdl,num:mn+1,company:co,contact:ct,email:em,title:'',conta
 }
 
 function rl(){
-  rs();ra();
+  // Don't call rs() and ra() here - renderAll() already does it
   var filt=sortLeads(gf());
   if(currentPage>Math.ceil(filt.length/PAGE_SIZE))currentPage=1;
   if(!filt.length){ge('larea').innerHTML='<div style="text-align:center;padding:48px;color:#111">No leads found.</div>';ge('lftr').textContent='0 of '+leads.length;return;}
