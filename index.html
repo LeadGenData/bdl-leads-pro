@@ -3855,10 +3855,16 @@ function saveNewContact(){
  */
 
 const GMAIL_CONFIG = {
-  // Paste your Client ID here (between the quotes):
-  CLIENT_ID: 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com',
+  // ✅ Your Client ID is already configured!
+  CLIENT_ID: '981783033378-0ethrtasbt6u2k8olq9rjqhep0qgha6t.apps.googleusercontent.com',
   
-  // Paste your API Key here (between the quotes):
+  // ⚠️ STILL NEED: Create an API Key and paste it here
+  // Steps:
+  // 1. Go to: https://console.cloud.google.com/apis/credentials
+  // 2. Click "CREATE CREDENTIALS" → "API key"
+  // 3. Copy the key (looks like: AIzaSyABCDEF...)
+  // 4. Click "RESTRICT KEY" → Select "Gmail API" only → Save
+  // 5. Paste the key here (replace the text below):
   API_KEY: 'YOUR_API_KEY_HERE',
   
   // Don't change these:
