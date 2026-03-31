@@ -92,14 +92,9 @@
       <div class="syns"><span id="sdot"></span><span id="stxt">Ready</span></div>
       <span id="fmsg" class="h"></span>
       <span id="ulbl"></span>
-      <div class="syns" style="margin-left:10px" title="Gmail Integration Status">
-        <span style="font-size:14px">📧</span>
-        <span id="gmail-status-text" style="color:#94a3b8">No accounts connected</span>
-      </div>
       <button class="hb hb-o" onclick="copyForClaude()" title="Copy pipeline summary to paste into Claude.ai">📋 Copy for Claude</button>
       <button class="hb hb-g" onclick="reloadSheets()">🔄 Reload</button>
       <button class="hb hb-g" onclick="exportCSV()" title="Download all leads as CSV">⬇️ CSV</button>
-      <button class="hb" onclick="showGmailPanel()" title="Connect Gmail accounts" style="background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.2)">📧 Gmail</button>
       <button class="hb" onclick="toggleSenderPanel()" title="Manage sender emails" style="background:rgba(100,116,139,.1);color:#94a3b8;border:1px solid #1e293b">⚙️ Senders</button>
       <button class="hb hb-o" onclick="syncAll()">☁️ Sync All</button>
       <button class="hb hb-g" onclick="logout()">Sign Out</button>
@@ -122,6 +117,7 @@
         <button class="tab on" onclick="stab('leads',this)">📋 Leads</button>
         <button class="tab" onclick="stab('clients',this)">🏆 Clients</button>
         <button class="tab" onclick="stab('dashboard',this)">📊 Dashboard</button>
+        <button class="tab" onclick="stab('gmail',this)">📧 Gmail</button>
         <button class="tab" id="del-tab-btn" onclick="stab('deleted',this)">Deleted</button>
         <button class="tab" id="arc-tab-btn" onclick="stab('archived',this)">&#128190; Archived</button>
         <button class="tab" id="kb-tab-btn" onclick="stab('kanban',this)">&#128203; Pipeline</button>
@@ -191,6 +187,56 @@
 
     <div id="tab-clients" class="h"><div id="carea"></div></div>
     <div id="tab-dashboard" class="h"><div id="darea"></div></div>
+    
+    <!-- Gmail Integration Tab -->
+    <div id="tab-gmail" class="h">
+      <div style="max-width:1200px;margin:0 auto">
+        <!-- Gmail Header -->
+        <div style="background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);padding:30px;border-radius:12px;margin-bottom:30px;color:#fff">
+          <h2 style="font-size:28px;margin-bottom:10px;display:flex;align-items:center;gap:12px">
+            📧 Gmail Integration
+            <span id="gmail-badge" style="font-size:14px;padding:4px 12px;background:rgba(255,255,255,.2);border-radius:20px;font-weight:500">Not Connected</span>
+          </h2>
+          <p style="opacity:.9;font-size:14px;margin-bottom:20px">Auto-detect replies from your sender accounts and update leads instantly</p>
+          <button onclick="scanAllGmailAccounts()" style="background:#fff;color:#3b82f6;border:none;padding:12px 24px;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,.1)">
+            🔍 Scan All Accounts Now
+          </button>
+        </div>
+
+        <!-- Connection Status Cards -->
+        <div id="gmail-accounts-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:20px;margin-bottom:30px">
+          <!-- Populated by JavaScript -->
+        </div>
+
+        <!-- Recent Replies -->
+        <div style="background:#000;border:1px solid #1f1f1f;border-radius:12px;padding:20px">
+          <h3 style="font-size:18px;margin-bottom:15px;color:var(--text)">Recent Replies Detected</h3>
+          <div id="gmail-recent-replies">
+            <p style="color:#64748b;text-align:center;padding:40px">No replies detected yet. Click "Scan All Accounts Now" to check for new replies.</p>
+          </div>
+        </div>
+
+        <!-- Setup Instructions (shown if no accounts connected) -->
+        <div id="gmail-setup-prompt" style="background:#0a0a0a;border:1px solid #1f1f1f;border-radius:12px;padding:30px;margin-top:30px;display:none">
+          <h3 style="font-size:20px;margin-bottom:15px;color:var(--text)">🚀 Get Started</h3>
+          <p style="color:#94a3b8;margin-bottom:20px;line-height:1.6">
+            To enable Gmail integration, you'll need to set up Google Cloud credentials (one-time, ~15 minutes).<br>
+            Once set up, you can connect all your sender accounts and automatically detect replies.
+          </p>
+          <ol style="color:#94a3b8;line-height:2;margin-left:20px">
+            <li>Create Google Cloud Project</li>
+            <li>Enable Gmail API</li>
+            <li>Get OAuth Client ID + API Key</li>
+            <li>Update credentials in the code</li>
+            <li>Connect your sender accounts</li>
+          </ol>
+          <p style="color:#94a3b8;margin-top:20px">
+            📖 See <strong style="color:var(--orange)">GMAIL_SETUP_GUIDE.md</strong> for detailed step-by-step instructions.
+          </p>
+        </div>
+      </div>
+    </div>
+    
     <div id="tab-deleted" class="h"><div id="del-area"></div></div>
     <div id="tab-archived" class="h"><div id="arc-area"></div></div>
     <div id="tab-kanban" class="h"><div id="kb-area" style="overflow-x:auto;padding:4px 0"></div></div>
@@ -3867,7 +3913,7 @@ function connectGmailAccount(senderEmail) {
       
       saveGmailAccounts();
       flash('✓ Connected ' + email);
-      closeGmailPanel();
+      renderGmailTab();
     }).catch(function(error) {
       console.error('Gmail auth error:', error);
       flash('Gmail connection failed: ' + (error.error || 'Unknown error'), 'bad');
@@ -4116,68 +4162,68 @@ function processGmailReply(lead, replyData) {
 
 // Update Gmail connection status in UI
 function updateGmailStatus() {
+  // Render the Gmail tab if user is on it
+  if (ge('tab-gmail') && !ge('tab-gmail').classList.contains('h')) {
+    renderGmailTab();
+  }
+}
+
+// Render Gmail tab with sender connections
+function renderGmailTab() {
   var connectedCount = Object.keys(gmailAccounts).filter(function(email) {
     return gmailAccounts[email].connected;
   }).length;
   
-  var statusEl = ge('gmail-status-text');
-  if (statusEl) {
+  // Update badge
+  var badge = ge('gmail-badge');
+  if (badge) {
     if (connectedCount > 0) {
-      statusEl.textContent = connectedCount + ' account' + (connectedCount > 1 ? 's' : '') + ' connected';
-      statusEl.style.color = '#22c55e';
+      badge.textContent = connectedCount + ' Connected';
+      badge.style.background = 'rgba(34,197,94,.3)';
     } else {
-      statusEl.textContent = 'No accounts connected';
-      statusEl.style.color = '#94a3b8';
+      badge.textContent = 'Not Connected';
+      badge.style.background = 'rgba(255,255,255,.2)';
     }
   }
-}
-
-// Show Gmail management panel
-function showGmailPanel() {
-  ge('gmail-panel').classList.add('open');
-  renderGmailPanel();
-}
-
-// Close Gmail panel
-function closeGmailPanel() {
-  ge('gmail-panel').classList.remove('open');
-}
-
-// Render Gmail panel with sender connections
-function renderGmailPanel() {
-  var html = '<h3>Gmail Integration</h3>';
-  html += '<p style="color:#94a3b8;font-size:13px;margin-bottom:20px">Connect your sender Gmail accounts to auto-detect replies</p>';
   
-  // Show all senders
-  html += '<div style="display:flex;flex-direction:column;gap:12px">';
+  // Render account cards
+  var html = '';
   
   SENDERS.forEach(function(senderEmail) {
     var connected = gmailAccounts[senderEmail] && gmailAccounts[senderEmail].connected;
     var lastSync = connected && gmailAccounts[senderEmail].lastSync ? 
       new Date(gmailAccounts[senderEmail].lastSync).toLocaleString() : 'Never';
     
-    html += '<div style="padding:15px;background:#0a0a0a;border:1px solid #1f1f1f;border-radius:8px;display:flex;justify-content:space-between;align-items:center">';
-    html += '<div>';
-    html += '<div style="font-weight:600;margin-bottom:4px">' + senderEmail + '</div>';
-    html += '<div style="font-size:11px;color:#64748b">Last sync: ' + lastSync + '</div>';
+    var cardBg = connected ? 'linear-gradient(135deg,rgba(34,197,94,.1) 0%,rgba(16,185,129,.05) 100%)' : '#000';
+    var statusColor = connected ? '#22c55e' : '#64748b';
+    var statusIcon = connected ? '✓' : '○';
+    
+    html += '<div style="background:' + cardBg + ';border:1px solid ' + (connected ? 'rgba(34,197,94,.3)' : '#1f1f1f') + ';border-radius:12px;padding:20px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:15px">';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">';
+    html += '<span style="color:' + statusColor + ';font-size:20px">' + statusIcon + '</span>' + senderEmail;
+    html += '</div>';
+    html += '<div style="font-size:12px;color:#64748b">Last sync: ' + lastSync + '</div>';
+    html += '</div>';
     html += '</div>';
     
     if (connected) {
-      html += '<button class="hb" style="background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)" onclick="disconnectGmailAccount(\'' + senderEmail + '\')">Disconnect</button>';
+      html += '<button class="hb" style="width:100%;background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)" onclick="disconnectGmailAccount(\'' + senderEmail + '\')">Disconnect</button>';
     } else {
-      html += '<button class="hb hb-g" onclick="connectGmailAccount(\'' + senderEmail + '\')">Connect</button>';
+      html += '<button class="hb hb-g" style="width:100%" onclick="connectGmailAccount(\'' + senderEmail + '\')">Connect Account</button>';
     }
     
     html += '</div>';
   });
   
-  html += '</div>';
+  ge('gmail-accounts-grid').innerHTML = html;
   
-  html += '<div style="margin-top:30px;padding-top:20px;border-top:1px solid #1f1f1f">';
-  html += '<button class="hb hb-o" style="width:100%" onclick="scanAllGmailAccounts()">🔍 Scan All Accounts Now</button>';
-  html += '</div>';
-  
-  ge('gmail-panel-content').innerHTML = html;
+  // Show/hide setup prompt
+  var setupPrompt = ge('gmail-setup-prompt');
+  if (setupPrompt) {
+    setupPrompt.style.display = connectedCount === 0 ? 'block' : 'none';
+  }
 }
 
 // Initialize Gmail on app load
@@ -4337,19 +4383,6 @@ Examples:
       <div class="su-changes" id="su-changes"></div>
       <button class="su-apply" onclick="applySmartUpdate()">&#10003; Apply All Changes</button>
       <button class="su-discard" onclick="discardSmartUpdate()">Discard</button>
-    </div>
-  </div>
-</div>
-
-<!-- Gmail Integration Panel -->
-<div class="panel" id="gmail-panel">
-  <div class="panel-inner">
-    <div class="panel-header">
-      <h2>📧 Gmail Integration</h2>
-      <button class="panel-close" onclick="closeGmailPanel()">×</button>
-    </div>
-    <div class="panel-body" id="gmail-panel-content">
-      <!-- Populated by JavaScript -->
     </div>
   </div>
 </div>
