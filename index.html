@@ -3831,12 +3831,53 @@ function saveNewContact(){
 // GMAIL API INTEGRATION
 // ============================================================================
 
+/*
+ * ═══════════════════════════════════════════════════════════════════
+ * GMAIL API CREDENTIALS - SIMPLE SETUP
+ * ═══════════════════════════════════════════════════════════════════
+ * 
+ * STEP 1: Get your credentials from Google Cloud Console
+ *         - Client ID looks like: 123456789-abc.apps.googleusercontent.com
+ *         - API Key looks like: AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ
+ * 
+ * STEP 2: Replace the text below with YOUR actual credentials
+ *         (Keep the quotes, just replace the text inside)
+ * 
+ * STEP 3: Save this file and refresh your browser
+ * 
+ * ⚠️ SECURITY NOTE:
+ * This version uses plaintext credentials (easier to set up).
+ * If uploading to GitHub:
+ *   - Keep repo PRIVATE, or
+ *   - See SECURE_CREDENTIALS_GUIDE.md for encoding method
+ * 
+ * ═══════════════════════════════════════════════════════════════════
+ */
+
 const GMAIL_CONFIG = {
-  CLIENT_ID: '981783033378-0ethrtasbt6u2k8olq9rjqhep0qgha6t.apps.googleusercontent.com',
-  API_KEY: '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',
+  // Paste your Client ID here (between the quotes):
+  CLIENT_ID: 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com',
+  
+  // Paste your API Key here (between the quotes):
+  API_KEY: 'YOUR_API_KEY_HERE',
+  
+  // Don't change these:
   DISCOVERY_DOCS: ['https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest'],
   SCOPES: 'https://www.googleapis.com/auth/gmail.readonly'
 };
+
+/*
+ * EXAMPLE (with fake credentials):
+ * 
+ * const GMAIL_CONFIG = {
+ *   CLIENT_ID: '123456789-abc123xyz.apps.googleusercontent.com',
+ *   API_KEY: 'AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890',
+ *   DISCOVERY_DOCS: ['https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest'],
+ *   SCOPES: 'https://www.googleapis.com/auth/gmail.readonly'
+ * };
+ * 
+ * Just replace YOUR_CLIENT_ID_HERE and YOUR_API_KEY_HERE with your real ones!
+ */
 
 var gmailApiLoaded = false;
 var gmailAccounts = {}; // { email: { token, refreshToken, expiresAt } }
