@@ -565,7 +565,7 @@ function stopClock(){if(clockInterval)clearInterval(clockInterval);}
 function updateClocks(){if(lpId){var l=leads.find(function(x){return String(x.id)===String(lpId);});if(l)renderLpClocks(l);}}
 
 function initNF(){}
-function stab(n,btn){['leads','clients','dashboard','deleted','archived','kanban'].forEach(function(t){ge('tab-'+t).classList.add('h');});document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});var el=ge('tab-'+n);el.classList.remove('h');el.style.animation='none';requestAnimationFrame(function(){el.style.animation='';});btn.classList.add('on');if(n==='clients')rc();if(n==='dashboard')renderDash();if(n==='deleted')renderDeleted();if(n==='archived')renderArchived();if(n==='kanban')renderKanban();}
+function stab(n,btn){['leads','clients','dashboard','gmail','deleted','archived','kanban'].forEach(function(t){ge('tab-'+t).classList.add('h');});document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});var el=ge('tab-'+n);el.classList.remove('h');el.style.animation='none';requestAnimationFrame(function(){el.style.animation='';});btn.classList.add('on');if(n==='clients')rc();if(n==='dashboard')renderDash();if(n==='deleted')renderDeleted();if(n==='archived')renderArchived();if(n==='kanban')renderKanban();if(n==='gmail')renderGmailTab();}
 function renderAll(){if(!deletedLeads)deletedLeads=[];rs();ra();rl();renderDash();populateNicheList();if(!archivedLeads)archivedLeads=[];ge('lcount').textContent=leads.length+' leads · '+clients.length+' clients'+(deletedLeads.length?' - Deleted:'+deletedLeads.length:'')+(archivedLeads.length?' - Archived:'+archivedLeads.length:'');updateDelTabBadge();updateArchiveTabBadge();}
 
 function rs(){
@@ -3855,17 +3855,11 @@ function saveNewContact(){
  */
 
 const GMAIL_CONFIG = {
-  // ✅ Your Client ID is already configured!
+  // ✅ Your Client ID is configured
   CLIENT_ID: '981783033378-0ethrtasbt6u2k8olq9rjqhep0qgha6t.apps.googleusercontent.com',
   
-  // ⚠️ STILL NEED: Create an API Key and paste it here
-  // Steps:
-  // 1. Go to: https://console.cloud.google.com/apis/credentials
-  // 2. Click "CREATE CREDENTIALS" → "API key"
-  // 3. Copy the key (looks like: AIzaSyABCDEF...)
-  // 4. Click "RESTRICT KEY" → Select "Gmail API" only → Save
-  // 5. Paste the key here (replace the text below):
-  API_KEY: 'YOUR_API_KEY_HERE',
+  // ✅ Your API Key is configured
+  API_KEY: 'AIzaSyAbnJKG_iVS3RF8WlJVA0sSlXb18ZvwcgM',
   
   // Don't change these:
   DISCOVERY_DOCS: ['https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest'],
