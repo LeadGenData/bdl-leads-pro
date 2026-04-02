@@ -203,6 +203,19 @@
           </button>
         </div>
 
+        <!-- Diagnostic Section -->
+        <div style="background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.2);border-radius:12px;padding:20px;margin-bottom:30px">
+          <h3 style="font-size:16px;margin-bottom:15px;color:var(--text);display:flex;align-items:center;gap:8px">
+            🔧 Setup Verification
+            <span id="test-status" style="font-size:12px;padding:2px 8px;background:rgba(100,116,139,.2);border-radius:12px;color:#94a3b8">Not Tested</span>
+          </h3>
+          <p style="color:#94a3b8;font-size:13px;margin-bottom:15px">Click "Test Setup" to verify your Gmail API configuration before connecting accounts.</p>
+          <button onclick="testGmailSetup()" style="background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.3);padding:10px 20px;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px">
+            Test Setup
+          </button>
+          <div id="test-results" style="margin-top:15px;display:none"></div>
+        </div>
+
         <!-- Connection Status Cards -->
         <div id="gmail-accounts-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:20px;margin-bottom:30px">
           <!-- Populated by JavaScript -->
@@ -3932,21 +3945,44 @@ function connectGmailAccount(senderEmail) {
     return;
   }
   
+  console.log('🔵 Connecting Gmail account:', senderEmail);
+  flash('Connecting ' + senderEmail + '...', 'info');
+  
   initGmailAPI().then(function() {
-    // Use login_hint to suggest which account to use
+    console.log('✅ Gmail API loaded successfully');
+    
+    // Check if gapi.auth2 is available
+    if (!gapi || !gapi.auth2) {
+      console.error('❌ gapi.auth2 not available');
+      flash('Gmail API not initialized. Please refresh and try again.', 'bad');
+      return;
+    }
+    
     var authInstance = gapi.auth2.getAuthInstance();
+    if (!authInstance) {
+      console.error('❌ Auth instance not available');
+      flash('OAuth not initialized. Please refresh and try again.', 'bad');
+      return;
+    }
+    
+    console.log('🔵 Opening OAuth popup for:', senderEmail);
+    
     authInstance.signIn({
       login_hint: senderEmail,
       prompt: 'select_account'
     }).then(function(googleUser) {
+      console.log('✅ OAuth successful for:', senderEmail);
+      
       var authResponse = googleUser.getAuthResponse(true);
       var profile = googleUser.getBasicProfile();
       var email = profile.getEmail();
       
+      console.log('✅ Connected email:', email);
+      
       // Store token info
       gmailAccounts[email] = {
         token: authResponse.access_token,
-        refreshToken: authResponse.id_token, // Note: refresh token handling needs backend
+        refreshToken: authResponse.id_token,
         expiresAt: Date.now() + (authResponse.expires_in * 1000),
         connected: true,
         lastSync: null
@@ -3956,12 +3992,24 @@ function connectGmailAccount(senderEmail) {
       flash('✓ Connected ' + email);
       renderGmailTab();
     }).catch(function(error) {
-      console.error('Gmail auth error:', error);
-      flash('Gmail connection failed: ' + (error.error || 'Unknown error'), 'bad');
+      console.error('❌ Gmail auth error:', error);
+      
+      // More helpful error messages
+      if (error.error === 'popup_closed_by_user') {
+        flash('Popup closed. Please try again.', 'bad');
+      } else if (error.error === 'access_denied') {
+        flash('Access denied. You must click "Allow" to connect.', 'bad');
+      } else if (error.error === 'popup_blocked_by_browser') {
+        flash('Popup blocked! Please allow popups for this site.', 'bad');
+      } else if (error.error === 'idpiframe_initialization_failed') {
+        flash('Cookie/3rd party error. Check browser settings or try incognito.', 'bad');
+      } else {
+        flash('Connection failed: ' + (error.error || error.message || 'Unknown error'), 'bad');
+      }
     });
   }).catch(function(error) {
-    console.error('Gmail API init error:', error);
-    flash('Could not load Gmail API', 'bad');
+    console.error('❌ Gmail API init error:', error);
+    flash('Could not load Gmail API. Check console for details.', 'bad');
   });
 }
 
@@ -4211,6 +4259,12 @@ function updateGmailStatus() {
 
 // Render Gmail tab with sender connections
 function renderGmailTab() {
+  // Ensure SENDERS is populated
+  if (!SENDERS || SENDERS.length === 0) {
+    console.warn('⚠️ SENDERS array is empty, loading defaults');
+    loadSenders();
+  }
+  
   var connectedCount = Object.keys(gmailAccounts).filter(function(email) {
     return gmailAccounts[email].connected;
   }).length;
@@ -4230,33 +4284,40 @@ function renderGmailTab() {
   // Render account cards
   var html = '';
   
-  SENDERS.forEach(function(senderEmail) {
-    var connected = gmailAccounts[senderEmail] && gmailAccounts[senderEmail].connected;
-    var lastSync = connected && gmailAccounts[senderEmail].lastSync ? 
-      new Date(gmailAccounts[senderEmail].lastSync).toLocaleString() : 'Never';
-    
-    var cardBg = connected ? 'linear-gradient(135deg,rgba(34,197,94,.1) 0%,rgba(16,185,129,.05) 100%)' : '#000';
-    var statusColor = connected ? '#22c55e' : '#64748b';
-    var statusIcon = connected ? '✓' : '○';
-    
-    html += '<div style="background:' + cardBg + ';border:1px solid ' + (connected ? 'rgba(34,197,94,.3)' : '#1f1f1f') + ';border-radius:12px;padding:20px">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:15px">';
-    html += '<div style="flex:1">';
-    html += '<div style="font-weight:700;font-size:16px;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">';
-    html += '<span style="color:' + statusColor + ';font-size:20px">' + statusIcon + '</span>' + senderEmail;
+  if (SENDERS.length === 0) {
+    html += '<div style="padding:40px;text-align:center;color:#94a3b8">';
+    html += '<p style="margin-bottom:20px">No sender emails configured</p>';
+    html += '<button class="hb hb-o" onclick="addSender()">+ Add First Sender Email</button>';
     html += '</div>';
-    html += '<div style="font-size:12px;color:#64748b">Last sync: ' + lastSync + '</div>';
-    html += '</div>';
-    html += '</div>';
-    
-    if (connected) {
-      html += '<button class="hb" style="width:100%;background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)" onclick="disconnectGmailAccount(\'' + senderEmail + '\')">Disconnect</button>';
-    } else {
-      html += '<button class="hb hb-g" style="width:100%" onclick="connectGmailAccount(\'' + senderEmail + '\')">Connect Account</button>';
-    }
-    
-    html += '</div>';
-  });
+  } else {
+    SENDERS.forEach(function(senderEmail) {
+      var connected = gmailAccounts[senderEmail] && gmailAccounts[senderEmail].connected;
+      var lastSync = connected && gmailAccounts[senderEmail].lastSync ? 
+        new Date(gmailAccounts[senderEmail].lastSync).toLocaleString() : 'Never';
+      
+      var cardBg = connected ? 'linear-gradient(135deg,rgba(34,197,94,.1) 0%,rgba(16,185,129,.05) 100%)' : '#000';
+      var statusColor = connected ? '#22c55e' : '#64748b';
+      var statusIcon = connected ? '✓' : '○';
+      
+      html += '<div style="background:' + cardBg + ';border:1px solid ' + (connected ? 'rgba(34,197,94,.3)' : '#1f1f1f') + ';border-radius:12px;padding:20px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:15px">';
+      html += '<div style="flex:1">';
+      html += '<div style="font-weight:700;font-size:16px;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">';
+      html += '<span style="color:' + statusColor + ';font-size:20px">' + statusIcon + '</span>' + senderEmail;
+      html += '</div>';
+      html += '<div style="font-size:12px;color:#64748b">Last sync: ' + lastSync + '</div>';
+      html += '</div>';
+      html += '</div>';
+      
+      if (connected) {
+        html += '<button class="hb" style="width:100%;background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)" onclick="disconnectGmailAccount(\'' + senderEmail + '\')">Disconnect</button>';
+      } else {
+        html += '<button class="hb hb-g" style="width:100%" onclick="connectGmailAccount(\'' + senderEmail + '\')">Connect Account</button>';
+      }
+      
+      html += '</div>';
+    });
+  }
   
   ge('gmail-accounts-grid').innerHTML = html;
   
@@ -4265,6 +4326,98 @@ function renderGmailTab() {
   if (setupPrompt) {
     setupPrompt.style.display = connectedCount === 0 ? 'block' : 'none';
   }
+  
+  console.log('📊 Gmail tab rendered:', SENDERS.length, 'senders,', connectedCount, 'connected');
+}
+
+// Test Gmail setup configuration
+function testGmailSetup() {
+  var statusEl = ge('test-status');
+  var resultsEl = ge('test-results');
+  
+  statusEl.textContent = 'Testing...';
+  statusEl.style.background = 'rgba(249,115,22,.3)';
+  statusEl.style.color = '#f97316';
+  
+  resultsEl.style.display = 'block';
+  resultsEl.innerHTML = '<div style="color:#94a3b8;font-size:13px">Running diagnostics...</div>';
+  
+  var results = [];
+  
+  // Test 1: Check credentials
+  console.log('🧪 Test 1: Checking credentials...');
+  if (!GMAIL_CONFIG.CLIENT_ID || GMAIL_CONFIG.CLIENT_ID.includes('YOUR_CLIENT_ID')) {
+    results.push({ok: false, msg: 'CLIENT_ID not configured'});
+  } else {
+    results.push({ok: true, msg: 'CLIENT_ID configured (' + GMAIL_CONFIG.CLIENT_ID.substring(0, 20) + '...)'});
+  }
+  
+  if (!GMAIL_CONFIG.API_KEY || GMAIL_CONFIG.API_KEY.includes('YOUR_API_KEY')) {
+    results.push({ok: false, msg: 'API_KEY not configured'});
+  } else {
+    results.push({ok: true, msg: 'API_KEY configured (' + GMAIL_CONFIG.API_KEY.substring(0, 15) + '...)'});
+  }
+  
+  // Test 2: Load Google API
+  console.log('🧪 Test 2: Loading Google API...');
+  initGmailAPI().then(function() {
+    results.push({ok: true, msg: 'Google API loaded successfully'});
+    
+    // Test 3: Check OAuth initialization
+    console.log('🧪 Test 3: Checking OAuth...');
+    if (gapi && gapi.auth2 && gapi.auth2.getAuthInstance()) {
+      results.push({ok: true, msg: 'OAuth initialized successfully'});
+    } else {
+      results.push({ok: false, msg: 'OAuth not initialized'});
+    }
+    
+    // Display results
+    var allPassed = results.every(function(r) { return r.ok; });
+    
+    statusEl.textContent = allPassed ? 'All Tests Passed' : 'Some Tests Failed';
+    statusEl.style.background = allPassed ? 'rgba(34,197,94,.3)' : 'rgba(239,68,68,.3)';
+    statusEl.style.color = allPassed ? '#22c55e' : '#ef4444';
+    
+    var html = '<div style="margin-top:10px">';
+    results.forEach(function(r) {
+      html += '<div style="padding:8px 12px;margin-bottom:5px;background:' + (r.ok ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.1)') + ';border:1px solid ' + (r.ok ? 'rgba(34,197,94,.2)' : 'rgba(239,68,68,.2)') + ';border-radius:6px;color:' + (r.ok ? '#22c55e' : '#ef4444') + ';font-size:13px">';
+      html += (r.ok ? '✓' : '✗') + ' ' + r.msg;
+      html += '</div>';
+    });
+    
+    if (allPassed) {
+      html += '<div style="margin-top:15px;padding:12px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);border-radius:6px;color:#60a5fa;font-size:13px">';
+      html += '✓ Setup verified! You can now connect your Gmail accounts.';
+      html += '</div>';
+    } else {
+      html += '<div style="margin-top:15px;padding:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:6px;color:#ef4444;font-size:13px">';
+      html += '✗ Setup incomplete. Please check the errors above and refer to the setup guide.';
+      html += '</div>';
+    }
+    
+    html += '</div>';
+    resultsEl.innerHTML = html;
+    
+    console.log('🧪 Test results:', results);
+    
+  }).catch(function(error) {
+    results.push({ok: false, msg: 'Failed to load Google API: ' + error.message});
+    
+    statusEl.textContent = 'Test Failed';
+    statusEl.style.background = 'rgba(239,68,68,.3)';
+    statusEl.style.color = '#ef4444';
+    
+    var html = '<div style="margin-top:10px">';
+    results.forEach(function(r) {
+      html += '<div style="padding:8px 12px;margin-bottom:5px;background:' + (r.ok ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.1)') + ';border:1px solid ' + (r.ok ? 'rgba(34,197,94,.2)' : 'rgba(239,68,68,.2)') + ';border-radius:6px;color:' + (r.ok ? '#22c55e' : '#ef4444') + ';font-size:13px">';
+      html += (r.ok ? '✓' : '✗') + ' ' + r.msg;
+      html += '</div>';
+    });
+    html += '</div>';
+    resultsEl.innerHTML = html;
+    
+    console.error('🧪 Test failed:', error);
+  });
 }
 
 // Initialize Gmail on app load
