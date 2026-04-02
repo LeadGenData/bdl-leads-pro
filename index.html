@@ -3917,10 +3917,9 @@ function initGmailAPI() {
   if (gmailApiLoaded) return Promise.resolve();
   
   return new Promise(function(resolve, reject) {
-    // Load Google API client
-    var script = document.createElement('script');
-    script.src = 'https://apis.google.com/js/api.js';
-    script.onload = function() {
+    // Check if already loaded
+    if (window.gapi) {
+      console.log('🔵 Google API already loaded');
       gapi.load('client:auth2', function() {
         gapi.client.init({
           apiKey: GMAIL_CONFIG.API_KEY,
@@ -3928,12 +3927,60 @@ function initGmailAPI() {
           discoveryDocs: GMAIL_CONFIG.DISCOVERY_DOCS,
           scope: GMAIL_CONFIG.SCOPES
         }).then(function() {
+          console.log('✅ Gmail API initialized');
           gmailApiLoaded = true;
           resolve();
-        }).catch(reject);
+        }).catch(function(error) {
+          console.error('❌ Gmail API init error:', error);
+          reject(error);
+        });
+      });
+      return;
+    }
+    
+    // Load Google API client
+    console.log('🔵 Loading Google API script...');
+    var script = document.createElement('script');
+    script.src = 'https://apis.google.com/js/api.js';
+    
+    // Timeout after 10 seconds
+    var timeout = setTimeout(function() {
+      console.error('❌ Google API load timeout');
+      reject(new Error('Timeout loading Google API. Check your internet connection.'));
+    }, 10000);
+    
+    script.onload = function() {
+      clearTimeout(timeout);
+      console.log('✅ Google API script loaded');
+      
+      gapi.load('client:auth2', function() {
+        console.log('🔵 Initializing Gmail client...');
+        gapi.client.init({
+          apiKey: GMAIL_CONFIG.API_KEY,
+          clientId: GMAIL_CONFIG.CLIENT_ID,
+          discoveryDocs: GMAIL_CONFIG.DISCOVERY_DOCS,
+          scope: GMAIL_CONFIG.SCOPES
+        }).then(function() {
+          console.log('✅ Gmail API initialized successfully');
+          gmailApiLoaded = true;
+          resolve();
+        }).catch(function(error) {
+          console.error('❌ Gmail API init failed:', error);
+          reject(error);
+        });
+      }, function(error) {
+        clearTimeout(timeout);
+        console.error('❌ gapi.load failed:', error);
+        reject(new Error('Failed to load Google API client: ' + error));
       });
     };
-    script.onerror = reject;
+    
+    script.onerror = function(error) {
+      clearTimeout(timeout);
+      console.error('❌ Script load error:', error);
+      reject(new Error('Failed to load Google API script. Check if apis.google.com is blocked.'));
+    };
+    
     document.head.appendChild(script);
   });
 }
