@@ -407,7 +407,7 @@ This is the core structure of your application. It includes the **Loading Screen
 
 <script>
 // --- 1. GLOBAL STATE & CONFIG ---
-const ACCESS_KEY = "0000"; // Default key from original code
+const ACCESS_KEY = "0000"; 
 const CLIENT_ID = '981783033378-0ethrtasbt6u2k8olq9rjqhep0qgha6t.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly';
 
@@ -420,33 +420,58 @@ let tokenClient;
 let gapiInited = false;
 let gisInited = false;
 
-// --- 2. AUTH & INITIALIZATION ---
+// --- 2. THE LOGIN FUNCTION (Fixed) ---
 function login() {
-  const p = document.getElementById('pass').value;
-  if (p === ACCESS_KEY) {
-    document.getElementById('login').classList.add('h');
-    document.getElementById('app').classList.remove('h');
-    document.getElementById('load').classList.add('h');
-    initApp();
+  const passInput = document.getElementById('pass');
+  const app = document.getElementById('app');
+  const loginScreen = document.getElementById('login');
+  const loader = document.getElementById('load');
+
+  // Check if the input value matches the key
+  if (passInput.value === ACCESS_KEY) {
+    loginScreen.classList.add('h'); // Hides login
+    app.classList.remove('h');      // Shows app
+    loader.classList.add('h');      // Hides loader
+    initApp();                      // Starts the data engine
   } else {
-    alert("Invalid Access Key");
+    alert("Access Denied: Please check your key.");
+    passInput.value = "";
+    passInput.focus();
   }
 }
 
+// --- 3. SYSTEM INITIALIZATION ---
 function initApp() {
+  console.log("BDL Engine Started...");
   renderLeads();
   updateStats();
-  gapiLoaded();
-  gisLoaded();
   
-  // Auto-sync visual feedback
+  // Try to load Google APIs in background
+  if (typeof gapi !== 'undefined') gapiLoaded();
+  if (typeof google !== 'undefined') gisLoaded();
+  
+  // UI Status Update
   const stxt = document.getElementById('stxt');
   const sdot = document.getElementById('sdot');
-  stxt.innerText = "Cloud Synced";
-  sdot.style.background = "var(--green)";
+  if(stxt) stxt.innerText = "Cloud Sync Ready";
+  if(sdot) sdot.style.background = "var(--green)";
 }
 
-// --- 3. GOOGLE API LOADERS ---
+// --- 4. DATA REFRESH ---
+function updateStats() {
+  const total = leads.length;
+  const repl = leads.filter(l => l.st === 'Replied').length;
+  const pos = leads.filter(l => l.st === 'Interested').length;
+  const bnc = bounced.length;
+
+  // Sync numbers with the Dashboard IDs from Part 2
+  if(document.getElementById('s-total')) document.getElementById('s-total').innerText = total;
+  if(document.getElementById('s-replied')) document.getElementById('s-replied').innerText = repl;
+  if(document.getElementById('s-pos')) document.getElementById('s-pos').innerText = pos;
+  if(document.getElementById('s-bounce')) document.getElementById('s-bounce').innerText = bnc;
+}
+
+// --- 5. GOOGLE API LOADERS ---
 function gapiLoaded() {
   gapi.load('client', async () => {
     await gapi.client.init({
@@ -457,45 +482,16 @@ function gapiLoaded() {
 }
 
 function gisLoaded() {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: '', // defined at execution
-  });
-  gisInited = true;
-}
-
-// --- 4. DATA PERSISTENCE ---
-function save() {
-  localStorage.setItem('bdl_leads', JSON.stringify(leads));
-  localStorage.setItem('bdl_bounced', JSON.stringify(bounced));
-  localStorage.setItem('bdl_deleted', JSON.stringify(deleted));
-  updateStats();
-}
-
-function updateStats() {
-  const total = leads.length;
-  const repl = leads.filter(l => l.st === 'Replied').length;
-  const pos = leads.filter(l => l.st === 'Interested').length;
-  const bnc = bounced.length;
-
-  // Update Numbers
-  document.getElementById('s-total').innerText = total;
-  document.getElementById('s-replied').innerText = repl;
-  document.getElementById('s-pos').innerText = pos;
-  document.getElementById('s-bounce').innerText = bnc;
-  document.getElementById('lcount').innerText = `System Active • ${total} Leads Loaded`;
-
-  // Update Progress Bars
-  if(total > 0) {
-    document.getElementById('b-replied').style.width = (repl/total*100) + '%';
-    document.getElementById('p-replied').innerText = Math.round(repl/total*100) + '%';
-    document.getElementById('b-pos').style.width = (pos/total*100) + '%';
-    document.getElementById('p-pos').innerText = Math.round(pos/total*100) + '%';
+  if(google.accounts.oauth2) {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: '', 
+    });
+    gisInited = true;
   }
 }
 </script>
-
 
 
 // Part 6: The Gmail Sync & Intelligence Engine
