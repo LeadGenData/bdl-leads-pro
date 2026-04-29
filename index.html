@@ -4628,5 +4628,41 @@ Examples:
   </div>
 </div>
 
+  <script>
+  window.addEventListener('message', function(event) {
+    // Only accept data from your custom capture snippets
+    if (event.data && event.data.type === 'BDL_LEAD_CAPTURE') {
+      const capturedLeads = event.data.leads;
+      
+      capturedLeads.forEach(lead => {
+        const newLead = {
+          id: 'cap_' + Date.now() + Math.random(),
+          name: lead.name || "Unknown Lead",
+          company: lead.company || "US Prospect",
+          status: 'New',
+          priority: 'High',
+          date: new Date().toLocaleDateString(),
+          context: lead.comment || lead.title || "Direct Capture",
+          source: event.data.source || "Social Media"
+        };
+        
+        // Push to your main leads array (ensure 'leads' is defined globally in your app)
+        if (typeof leads !== 'undefined') {
+          leads.push(newLead);
+        }
+      });
+
+      // Execute your existing refresh functions
+      if (typeof saveLeads === 'function') saveLeads();
+      if (typeof renderLeads === 'function') renderLeads();
+      
+      // Trigger your Boss notification UI
+      if (typeof showBossPopup === 'function') {
+        showBossPopup("IMPORT SUCCESS", `Captured ${capturedLeads.length} leads from ${event.data.source || 'External Source'}`);
+      }
+    }
+  });
+</script>
+
 </body>
 </html>
